@@ -162,6 +162,10 @@ input:focus,textarea:focus{outline:none;border-color:var(--green)}
         <label>সাইট লোগো — imgbb Direct link (খালি = ডিফল্ট V4Z লোগো)</label><input type="text" id="s_logo" placeholder="https://i.ibb.co/..." oninput="logoPrev(this)">
         <img class="logoprev" style="display:none;max-width:72px;max-height:72px;border-radius:10px;margin-top:6px;border:1px solid #0f0">
         <div class="logohint"></div>
+        <label>📤 অথবা ফোন থেকে লোগো আপলোড করো (সরাসরি সাইটে বসে যাবে)</label>
+        <input type="file" id="s_logoFile" accept="image/*">
+        <button class="btn" onclick="uploadSiteLogo()">⬆ লোগো আপলোড করো</button>
+        <div id="logoUpProg" style="font-size:12px;color:#0f0;margin-top:4px"></div>
         <button class="btn" onclick="saveConfig()">💾 সেটিংস সেভ করো</button>
       </div>
       <div class="guide">
@@ -424,6 +428,68 @@ function renderConfig(){
   logoPrev($("s_logo"));
 }
 
+function ghPutRaw(path, b64, msg){
+  return ghGet(path).then(function(f){ return f.sha; }, function(){ return null; }).then(function(sha){
+    var body = {message:msg, content:b64};
+    if(sha) body.sha = sha;
+    return fetch("https://api.github.com/repos/"+REPO+"/contents/"+path, {
+      method:"PUT",
+      headers:{"Authorization":"Bearer "+token, "Accept":"application/vnd.github+json", "Content-Type":"application/json"},
+      body: JSON.stringify(body)
+    });
+  }).then(function(r){
+    if(r.status===401) throw "token ভুল/মেয়াদ শেষ";
+    if(!r.ok) throw "GitHub error "+r.status;
+    return r.json();
+  });
+}
+function ghDeleteFile(path, msg){
+  return ghGet(path).then(function(f){
+    return fetch("https://api.github.com/repos/"+REPO+"/contents/"+path, {
+      method:"DELETE",
+      headers:{"Authorization":"Bearer "+token, "Accept":"application/vnd.github+json", "Content-Type":"application/json"},
+      body: JSON.stringify({message:msg, sha:f.sha})
+    });
+  }).then(function(r){
+    if(!r.ok && r.status!==404) throw "GitHub error "+r.status;
+    return true;
+  });
+}
+function uploadSiteLogo(){
+  var inp = $("s_logoFile"), prog = $("logoUpProg");
+  if(!inp.files || !inp.files[0]){ status("❌ আগে একটা ছবি বেছে নাও", false); return; }
+  var f = inp.files[0];
+  if(f.size > 2*1024*1024){ status("❌ ছবি 2MB-এর বেশি — ছোট ছবি দাও", false); return; }
+  prog.textContent = "⏳ আপলোড হচ্ছে...";
+  var rd = new FileReader();
+  rd.onload = function(){
+    try{
+      var b64 = String(rd.result).split(",")[1];
+      var ext = (f.name.split(".").pop()||"png").toLowerCase().replace(/[^a-z0-9]/g,"") || "png";
+      if(["jpg","jpeg","png","gif","webp","svg"].indexOf(ext)<0) ext = "png";
+      var path = "assets/site-logo."+ext;
+      // পুরনো extension-এর লোগো থাকলে মুছে দাও
+      var oldUrl = $("s_logo").value.trim();
+      var m = oldUrl.match(/\/assets\/site-logo\.([a-z0-9]+)$/i);
+      var chain = Promise.resolve();
+      if(m && m[1].toLowerCase()!==ext){
+        chain = ghDeleteFile("assets/site-logo."+m[1].toLowerCase(), "Admin: replace site logo").catch(function(){});
+      }
+      chain.then(function(){ return ghPutRaw(path, b64, "Admin: upload site logo"); })
+      .then(function(){
+        var url = "https://v4zrashd.github.io/rashd-app--store/"+path;
+        $("s_logo").value = url;
+        logoPrev($("s_logo"));
+        prog.textContent = "✅ আপলোড সম্পূর্ণ! সেটিংস সেভ হচ্ছে...";
+        saveConfig();
+        prog.textContent = "";
+      })
+      .catch(function(e){ prog.textContent = ""; status("❌ ব্যর্থ: "+e, false); });
+    }catch(e){ prog.textContent=""; status("❌ ব্যর্থ: "+e, false); }
+  };
+  rd.onerror = function(){ prog.textContent=""; status("❌ ছবি পড়া যায়নি", false); };
+  rd.readAsDataURL(f);
+}
 function saveConfig(){
   A.config = {
     title: $("s_title").value.trim(),

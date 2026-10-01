@@ -139,7 +139,10 @@ input:focus,textarea:focus{outline:none;border-color:var(--green)}
         <div id="upProg" style="display:none;margin-top:12px;background:#060a08;border:1px solid #1d2b23;border-radius:8px;height:26px;overflow:hidden"><div id="upBar" style="height:100%;width:0%;background:linear-gradient(135deg,#00ff88,#00e5ff);transition:width .2s"></div></div>
         <div id="upPct" style="font-size:12px;color:var(--muted);margin-top:6px;display:none"></div>
         <button class="btn" id="upBtn" onclick="uploadApk()">⬆ আপলোড শুরু করো</button>
-        <div class="guide" style="margin-top:10px">ফাইল সরাসরি <b>release v1.0</b>-তে যাবে, আর সাইটে অটো শো করবে। বড় ফাইলে সময় লাগতে পারে — আপলোড চলাকালীন পেজ বন্ধ কোরো না।</div>
+        <div class="guide" style="margin-top:10px">ফাইল প্রথমে repo-তে যাবে, তারপর GitHub অটো <b>release v1.0</b>-তে বসিয়ে সাইটে দেখাবে। বড় ফাইলে সময় লাগতে পারে — চলাকালীন পেজ বন্ধ কোরো না।</div>
+        <div class="guide" id="wfGuide" style="display:none;margin-top:10px;border-color:var(--red)">
+          <b>⚠ একবারের সেটআপ বাকি:</b> GitHub-এ <b>rashd-app--store</b> repo-তে <b>Add file → Create new file</b> চাপো, ফাইলের নাম দাও <b>.github/workflows/attach-release.yml</b>, তারপর আমি চ্যাটে যে ফাইলটা দিচ্ছি সেটার ভেতরের কোড কপি করে পেস্ট করে <b>Commit</b> করো। তারপর থেকে আপলোড অটো কাজ করবে।
+        </div>
       </div>
     </div>
 
@@ -407,62 +410,110 @@ function ghApi(path, method){
 function getRelease(){ return ghApi("/releases/tags/"+REL_TAG); }
 function fmtMB(b){ return (b/1048576).toFixed(1)+" MB"; }
 
+function wfCheck(){
+  return fetch("https://api.github.com/repos/"+REPO+"/contents/.github/workflows/attach-release.yml", {
+    headers:{"Authorization":"Bearer "+token, "Accept":"application/vnd.github+json"}
+  }).then(function(r){ return r.ok; }).catch(function(){ return false; });
+}
+function xhrPutFile(path, b64, msg, sha, onProg){
+  return new Promise(function(resolve, reject){
+    var xhr = new XMLHttpRequest();
+    xhr.open("PUT", "https://api.github.com/repos/"+REPO+"/contents/"+path);
+    xhr.setRequestHeader("Authorization", "Bearer "+token);
+    xhr.setRequestHeader("Accept", "application/vnd.github+json");
+    xhr.setRequestHeader("Content-Type", "application/json");
+    xhr.upload.onprogress = onProg || function(){};
+    xhr.onload = function(){
+      if(xhr.status===200||xhr.status===201||xhr.status===422) resolve(xhr.status);
+      else if(xhr.status===401) reject("token ভুল/মেয়াদ শেষ — আবার unlock করো");
+      else reject("আপলোড ব্যর্থ (HTTP "+xhr.status+")");
+    };
+    xhr.onerror = function(){ reject("নেটওয়ার্ক সমস্যা! আবার চেষ্টা করো।"); };
+    var body = {message: msg, content: b64, branch: "main"};
+    if(sha) body.sha = sha;
+    xhr.send(JSON.stringify(body));
+  });
+}
 function uploadApk(){
   var f = $("up_file").files[0];
   if(!f){ status("❌ আগে ফাইল বেছে নাও!", false); return; }
+  if(f.size > 90*1048576){ status("❌ ফাইল অনেক বড় (৯০MB+)!", false); return; }
   var btn = $("upBtn"); btn.disabled = true;
-  $("upProg").style.display="none"; $("upPct").style.display="none"; $("upBar").style.width="0%";
-  status("⏳ release-এর সাথে যুক্ত হচ্ছে...", true);
-  getRelease().then(function(rel){
-    var upUrl = rel.upload_url.replace("{?name,label}", "?name="+encodeURIComponent(f.name));
-    status("⬆ আপলোড চলছে: "+f.name+" ("+fmtMB(f.size)+")", true);
+  var bar=$("upBar"), pct=$("upPct");
+  $("upProg").style.display="block"; pct.style.display="block"; bar.style.width="0%";
+  pct.textContent = "⏳ চেক করা হচ্ছে...";
+  var wg=$("wfGuide"); if(wg) wg.style.display="none";
+  wfCheck().then(function(ok){
+    if(!ok) throw "NOWF";
+    pct.textContent = "📖 ফাইল পড়া হচ্ছে...";
     return new Promise(function(resolve, reject){
-      var xhr = new XMLHttpRequest();
-      xhr.open("POST", upUrl);
-      xhr.setRequestHeader("Authorization", "Bearer "+token);
-      xhr.setRequestHeader("Content-Type", "application/octet-stream");
-      xhr.upload.onprogress = function(e){
-        if(e.lengthComputable){
-          var p = Math.round(e.loaded/e.total*100);
-          $("upProg").style.display="block"; $("upPct").style.display="block";
-          $("upBar").style.width = p+"%";
-          $("upPct").textContent = "⬆ "+p+"% ("+fmtMB(e.loaded)+" / "+fmtMB(e.total)+")";
-        }
-      };
-      xhr.onload = function(){
-        if(xhr.status>=200 && xhr.status<300){ try{ resolve(JSON.parse(xhr.responseText)); }catch(e){ reject("সার্ভার রেসপন্স বোঝা যায়নি!"); } }
-        else if(xhr.status===422){ reject("এই নামে ফাইল আগেই আছে! পুরনোটা ডিলিট করো, বা ফাইলের নাম বদলে আবার চেষ্টা করো।"); }
-        else reject("আপলোড ব্যর্থ (HTTP "+xhr.status+")");
-      };
-      xhr.onerror = function(){ reject("নেটওয়ার্ক সমস্যা! আবার চেষ্টা করো।"); };
-      xhr.send(f);
+      var rd = new FileReader();
+      rd.onprogress = function(e){ if(e.lengthComputable) bar.style.width=Math.round(e.loaded/e.total*25)+"%"; };
+      rd.onload = function(){ resolve(rd.result.split(",",2)[1]); };
+      rd.onerror = function(){ reject("ফাইল পড়া যায়নি!"); };
+      rd.readAsDataURL(f);
     });
-  }).then(function(asset){
-    status("⏳ সাইটের তালিকায় যোগ হচ্ছে...", true);
-    A.assets.push({name: asset.name, size: asset.size, downloads: 0, url: asset.browser_download_url});
-    var meta = {
-      label: $("up_label").value.trim(),
-      desc: $("up_desc").value.trim(),
-      video: $("up_video").value.trim(),
-      logo: $("up_logo").value.trim()
+  }).then(function(b64){
+    var path = "pending/"+encodeURIComponent(f.name);
+    var progFn = function(e){
+      if(e.lengthComputable){ var p=25+Math.round(e.loaded/e.total*60); bar.style.width=p+"%"; pct.textContent="⬆ পাঠানো হচ্ছে "+Math.round(e.loaded/e.total*100)+"%"; }
     };
-    if(meta.label||meta.desc||meta.video||meta.logo){
-      if(!A.appsJson.apps[asset.name]) A.appsJson.apps[asset.name] = {};
-      for(var k in meta) if(meta[k]) A.appsJson.apps[asset.name][k] = meta[k];
-    }
-    return ghPut("assets.json", {updated: new Date().toISOString(), assets: A.assets}, "Admin: upload "+asset.name)
-      .then(function(){ return ghPut("apps.json", A.appsJson, "Admin: meta for "+asset.name); });
+    return ghGet(path).then(function(info){
+      return xhrPutFile(path, b64, "Admin upload: "+f.name, info.sha, progFn);
+    }, function(){
+      return xhrPutFile(path, b64, "Admin upload: "+f.name, null, progFn);
+    });
   }).then(function(){
-    status("✅ আপলোড সম্পূর্ণ! ১-২ মিনিটে সাইটে দেখা যাবে।", true);
-    $("up_file").value = "";
-    ["up_label","up_desc","up_video","up_logo"].forEach(function(id){ $(id).value=""; });
-    $("upBar").style.width="0%"; $("upProg").style.display="none"; $("upPct").style.display="none";
-    loadAll();
+    bar.style.width="100%";
+    pct.textContent="⚙ GitHub ফাইলটা release v1.0-তে বসাচ্ছে... (৩০-৬০ সেকেন্ড লাগতে পারে)";
+    status("⏳ রিলিজে যোগ হওয়ার অপেক্ষা...", true);
+    var tries=0;
+    var iv=setInterval(function(){
+      tries++;
+      getRelease().then(function(rel){
+        var found=null;
+        (rel.assets||[]).forEach(function(x){ if(x.name===f.name) found=x; });
+        if(found){ clearInterval(iv); finishUpload(found); }
+        else if(tries>=18){
+          clearInterval(iv); btn.disabled=false;
+          status("⚠ একটু সময় লাগছে — release-এ বসলে সাইটে অটো দেখা যাবে।", true);
+        }
+      }).catch(function(){ if(tries>=18){ clearInterval(iv); btn.disabled=false; } });
+    }, 10000);
   }).catch(function(e){
-    status("❌ "+(typeof e==="string"?e:"ব্যর্থ!"), false);
-  }).finally(function(){ btn.disabled = false; });
+    btn.disabled=false;
+    if(e==="NOWF"){
+      status("❌ Auto-release সেটআপ বাকি! নিচের লাল গাইড দেখো।", false);
+      var g=$("wfGuide"); if(g) g.style.display="block";
+    } else {
+      status("❌ "+(typeof e==="string"?e:"ব্যর্থ!"), false);
+    }
+  });
 }
-
+function finishUpload(asset){
+  A.assets.push({name: asset.name, size: asset.size, downloads: 0, url: asset.browser_download_url});
+  var meta = {
+    label: $("up_label").value.trim(),
+    desc: $("up_desc").value.trim(),
+    video: $("up_video").value.trim(),
+    logo: $("up_logo").value.trim()
+  };
+  if(meta.label||meta.desc||meta.video||meta.logo){
+    if(!A.appsJson.apps[asset.name]) A.appsJson.apps[asset.name] = {};
+    for(var k in meta) if(meta[k]) A.appsJson.apps[asset.name][k] = meta[k];
+  }
+  ghPut("assets.json", {updated: new Date().toISOString(), assets: A.assets}, "Admin: upload "+asset.name)
+    .then(function(){ return ghPut("apps.json", A.appsJson, "Admin: meta for "+asset.name); })
+    .then(function(){
+      status("✅ আপলোড সম্পূর্ণ! ১-২ মিনিটে সাইটে দেখা যাবে।", true);
+      $("up_file").value="";
+      ["up_label","up_desc","up_video","up_logo"].forEach(function(id){ $(id).value=""; });
+      $("upBar").style.width="0%"; $("upProg").style.display="none"; $("upPct").style.display="none";
+      $("upBtn").disabled=false;
+      loadAll();
+    })
+    .catch(function(e){ $("upBtn").disabled=false; status("❌ "+e, false); });
+}
 function deleteApp(name){
   if(!confirm("⚠ '"+name+"' ডিলিট করবে?\nরিলিজ + সাইট — দুই জায়গা থেকেই মুছে যাবে!")) return;
   status("⏳ ডিলিট হচ্ছে...", true);

@@ -441,6 +441,7 @@ function putWithRetry(path, b64, msg, tries){
     })(tries);
   });
 }
+function nameNorm(s){ return String(s||"").toLowerCase().replace(/[\s._-]+/g,""); }
 function uploadChunks(f, buf, bar, pct){
   var total = buf.byteLength;
   var n = Math.max(1, Math.ceil(total / CHUNK_SIZE));
@@ -533,7 +534,7 @@ function uploadApk(){
       tries++;
       getRelease().then(function(rel){
         var found=null;
-        (rel.assets||[]).forEach(function(x){ if(x.name===f.name) found=x; });
+        (rel.assets||[]).forEach(function(x){ if(nameNorm(x.name)===nameNorm(f.name)) found=x; });
         if(found){ clearInterval(iv); finishUpload(found); }
         else if(tries>=18){
           clearInterval(iv); btn.disabled=false;

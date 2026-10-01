@@ -316,7 +316,7 @@ function logoPrev(el){
   var v = el.value.trim();
   if(!v){ if(pv) pv.style.display='none'; if(hn) hn.textContent=''; return; }
   var isPage = /\/\/[^\/]*(ibb\.co\.com|imgbb\.com)\//i.test(v) && v.indexOf('i.ibb.co')<0;
-  if(hn) hn.textContent = isPage ? '⚠ এটা পেজ লিংক, ছবি আসবে না! imgbb-তে ছবিটা ওপেন করে "Direct link" কপি করো (https://i.ibb.co/... দিয়ে শুরু হবে)।' : '';
+  if(hn) hn.textContent = isPage ? '⚠ এটা পেজ লিংক! চিন্তা নেই — সেভ চাপ দিলে অটো Direct link বানিয়ে দেবো ✅' : '';
   if(pv){ pv.style.display='block'; pv.src=v;
     pv.onerror=function(){ pv.style.display='none'; if(hn&&!hn.textContent) hn.textContent='❌ এই লিংকে ছবি পাওয়া যাচ্ছে না — Direct link দাও।'; };
     pv.onload=function(){ if(hn&&!isPage) hn.textContent='✅ ছবি ঠিক আছে'; };
@@ -367,10 +367,41 @@ function collectApps(){
   }
 }
 
+function isPageLink(v){
+  return /\/\/(ibb\.co\.com|imgbb\.com)\//i.test(v||"") && (v||"").indexOf("i.ibb.co")<0;
+}
+function resolveImgbbPage(url){
+  var proxy = "https://api.allorigins.win/raw?url="+encodeURIComponent(url);
+  return fetch(proxy).then(function(r){ if(!r.ok) throw 0; return r.text(); })
+  .then(function(html){
+    var m = html.match(/property=["']og:image["'][^>]*content=["']([^"']+)["']/i)
+         || html.match(/content=["']([^"']+)["'][^>]*property=["']og:image["']/i);
+    return m ? m[1] : null;
+  }).catch(function(){ return null; });
+}
+function autoFixLogos(){
+  var inputs = Array.prototype.slice.call(document.querySelectorAll('[data-f="logo"]'));
+  var sl = document.getElementById("s_logo");
+  if(sl) inputs.push(sl);
+  var jobs = inputs.map(function(el){
+    var v = el.value.trim();
+    if(!v || !isPageLink(v)) return Promise.resolve();
+    var card = el.closest ? (el.closest(".card")||el.parentNode) : el.parentNode;
+    var hn = card.querySelector(".logohint");
+    if(hn) hn.textContent = "⏳ Direct link বের করছি...";
+    return resolveImgbbPage(v).then(function(direct){
+      if(direct){ el.value = direct; logoPrev(el); if(hn) hn.textContent = "✅ পেজ লিংক থেকে Direct link বানিয়ে দিয়েছি!"; }
+      else if(hn) hn.textContent = "⚠ Direct link বের করা যায়নি — Muse-কে লিংকটা পাঠাও, ঠিক করে দেবে।";
+    });
+  });
+  return Promise.all(jobs);
+}
 function saveApps(){
-  collectApps();
-  ghPut("apps.json", A.appsJson, "Admin: update apps")
-    .then(function(){ status("✅ অ্যাপ সেভ হয়েছে! ১-২ মিনিটে সাইটে দেখা যাবে।", true); renderStats(); })
+  status("⏳ লোগো লিংক চেক হচ্ছে...", true);
+  autoFixLogos().then(function(){
+    collectApps();
+    return ghPut("apps.json", A.appsJson, "Admin: update apps");
+  }).then(function(){ status("✅ অ্যাপ সেভ হয়েছে! ১-২ মিনিটে সাইটে দেখা যাবে।", true); renderStats(); })
     .catch(function(e){ status("❌ সেভ ব্যর্থ: "+e, false); });
 }
 
@@ -491,7 +522,9 @@ function uploadSiteLogo(){
   rd.readAsDataURL(f);
 }
 function saveConfig(){
-  A.config = {
+  status("⏳ লোগো লিংক চেক হচ্ছে...", true);
+  return autoFixLogos().then(function(){
+    A.config = {
     title: $("s_title").value.trim(),
     heading: $("s_heading").value.trim(),
     subtitle: $("s_subtitle").value.trim(),
@@ -501,8 +534,8 @@ function saveConfig(){
     announce: $("s_announce").value.trim(),
     logo: $("s_logo").value.trim()
   };
-  ghPut("config.json", A.config, "Admin: update site config")
-    .then(function(){ status("✅ সেটিংস সেভ হয়েছে!", true); })
+    return ghPut("config.json", A.config, "Admin: update site config");
+  }).then(function(){ status("✅ সেটিংস সেভ হয়েছে!", true); })
     .catch(function(e){ status("❌ ব্যর্থ: "+e, false); });
 }
 

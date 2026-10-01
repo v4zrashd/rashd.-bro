@@ -33,6 +33,8 @@ header.p h1{font-size:20px;color:var(--green);text-shadow:0 0 18px rgba(0,255,13
 .card{background:var(--card);border:1px solid #1d2b23;border-radius:12px;padding:14px;margin-bottom:12px}
 .card h3{font-size:13px;color:var(--cyan);font-family:monospace;word-break:break-all;margin-bottom:10px}
 .relbadge{font-size:11px;color:#0f0;background:rgba(0,255,0,.08);border:1px dashed #0f0;border-radius:6px;padding:4px 8px;margin-bottom:8px}
+.logohint{font-size:12px;color:#fa5;margin-top:4px;min-height:16px}
+.logoprev{background:#060e1e}
 label{font-size:12px;color:var(--muted);display:block;margin:8px 0 4px}
 input[type=text],textarea{width:100%;background:#060a08;border:1px solid #1d2b23;color:#d7ffe9;border-radius:8px;padding:9px 10px;font-size:14px;font-family:inherit}
 input[type=file]{width:100%;background:#060a08;border:1px dashed #2a4a3a;color:#d7ffe9;border-radius:8px;padding:12px 10px;font-size:14px;margin-top:4px}
@@ -157,6 +159,9 @@ input:focus,textarea:focus{outline:none;border-color:var(--green)}
         <label>Telegram বাটন লেখা</label><input type="text" id="s_telegramLabel">
         <label>ফুটার লেখা</label><input type="text" id="s_footer">
         <label>ঘোষণা ব্যানার (খালি রাখলে লুকানো থাকবে)</label><input type="text" id="s_announce">
+        <label>সাইট লোগো — imgbb Direct link (খালি = ডিফল্ট V4Z লোগো)</label><input type="text" id="s_logo" placeholder="https://i.ibb.co/..." oninput="logoPrev(this)">
+        <img class="logoprev" style="display:none;max-width:72px;max-height:72px;border-radius:10px;margin-top:6px;border:1px solid #0f0">
+        <div class="logohint"></div>
         <button class="btn" onclick="saveConfig()">💾 সেটিংস সেভ করো</button>
       </div>
       <div class="guide">
@@ -301,6 +306,18 @@ function renderStats(){
 
 function esc(s){ return String(s==null?"":s).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;"); }
 
+function logoPrev(el){
+  var card = el.closest ? (el.closest('.card')||el.parentNode) : el.parentNode;
+  var pv = card.querySelector('.logoprev'), hn = card.querySelector('.logohint');
+  var v = el.value.trim();
+  if(!v){ if(pv) pv.style.display='none'; if(hn) hn.textContent=''; return; }
+  var isPage = /\/\/[^\/]*(ibb\.co\.com|imgbb\.com)\//i.test(v) && v.indexOf('i.ibb.co')<0;
+  if(hn) hn.textContent = isPage ? '⚠ এটা পেজ লিংক, ছবি আসবে না! imgbb-তে ছবিটা ওপেন করে "Direct link" কপি করো (https://i.ibb.co/... দিয়ে শুরু হবে)।' : '';
+  if(pv){ pv.style.display='block'; pv.src=v;
+    pv.onerror=function(){ pv.style.display='none'; if(hn&&!hn.textContent) hn.textContent='❌ এই লিংকে ছবি পাওয়া যাচ্ছে না — Direct link দাও।'; };
+    pv.onload=function(){ if(hn&&!isPage) hn.textContent='✅ ছবি ঠিক আছে'; };
+  }
+}
 function renderApps(){
   var box = $("tab-apps"); box.innerHTML = "";
   A.assets.forEach(function(a, i){
@@ -315,8 +332,10 @@ function renderApps(){
       '<textarea data-f="desc" data-i="'+i+'">'+esc(d.desc||"")+'</textarea>'+
       '<label>ভিডিও লিংক (YouTube, ঐচ্ছিক)</label>'+
       '<input type="text" data-f="video" data-i="'+i+'" value="'+esc(d.video||"")+'">'+
-      '<label>লোগো লিংক — imgbb direct URL (ঐচ্ছিক)</label>'+
-      '<input type="text" data-f="logo" data-i="'+i+'" value="'+esc(d.logo||"")+'" placeholder="https://i.ibb.co/...">'+
+      '<label>লোগো লিংক — imgbb Direct link (ঐচ্ছিক)</label>'+
+      '<input type="text" data-f="logo" data-i="'+i+'" value="'+esc(d.logo||"")+'" placeholder="https://i.ibb.co/..." oninput="logoPrev(this)">'+
+      '<img class="logoprev" style="display:none;max-width:72px;max-height:72px;border-radius:10px;margin-top:6px;border:1px solid #0f0">'+
+      '<div class="logohint"></div>'+
       '<div class="hideline"><input type="checkbox" data-f="hidden" data-i="'+i+'"'+(d.hidden?" checked":"")+'> <span>🚫 সাইটে লুকিয়ে রাখো</span></div>';
     var delB = document.createElement("button");
     delB.className = "del"; delB.textContent = "🗑 এই অ্যাপ ডিলিট করো";
@@ -328,6 +347,7 @@ function renderApps(){
   b.className = "btn"; b.textContent = "💾 সব অ্যাপ সেভ করো";
   b.onclick = saveApps;
   box.appendChild(b);
+  box.querySelectorAll('[data-f="logo"]').forEach(function(el){ logoPrev(el); });
 }
 
 function collectApps(){
@@ -400,6 +420,8 @@ function renderConfig(){
   $("s_telegramLabel").value = c.telegramLabel||"";
   $("s_footer").value = c.footer||"";
   $("s_announce").value = c.announce||"";
+  $("s_logo").value = c.logo||"";
+  logoPrev($("s_logo"));
 }
 
 function saveConfig(){
@@ -410,7 +432,8 @@ function saveConfig(){
     telegram: $("s_telegram").value.trim(),
     telegramLabel: $("s_telegramLabel").value.trim(),
     footer: $("s_footer").value.trim(),
-    announce: $("s_announce").value.trim()
+    announce: $("s_announce").value.trim(),
+    logo: $("s_logo").value.trim()
   };
   ghPut("config.json", A.config, "Admin: update site config")
     .then(function(){ status("✅ সেটিংস সেভ হয়েছে!", true); })

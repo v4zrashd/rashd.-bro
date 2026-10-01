@@ -34,6 +34,7 @@ header.p h1{font-size:20px;color:var(--green);text-shadow:0 0 18px rgba(0,255,13
 .card h3{font-size:13px;color:var(--cyan);font-family:monospace;word-break:break-all;margin-bottom:10px}
 label{font-size:12px;color:var(--muted);display:block;margin:8px 0 4px}
 input[type=text],textarea{width:100%;background:#060a08;border:1px solid #1d2b23;color:#d7ffe9;border-radius:8px;padding:9px 10px;font-size:14px;font-family:inherit}
+input[type=file]{width:100%;background:#060a08;border:1px dashed #2a4a3a;color:#d7ffe9;border-radius:8px;padding:12px 10px;font-size:14px;margin-top:4px}
 textarea{min-height:56px;resize:vertical}
 input:focus,textarea:focus{outline:none;border-color:var(--green)}
 .row{display:flex;gap:10px;align-items:center}
@@ -94,6 +95,7 @@ input:focus,textarea:focus{outline:none;border-color:var(--green)}
     <div class="tabs">
       <button class="tab on" data-t="apps" onclick="showTab('apps',this)">📱 অ্যাপ</button>
       <button class="tab" data-t="add" onclick="showTab('add',this)">➕ নতুন অ্যাপ</button>
+      <button class="tab" data-t="up" onclick="showTab('up',this)">⬆ আপলোড</button>
       <button class="tab" data-t="set" onclick="showTab('set',this)">🎨 সাইট সেটিং</button>
     </div>
 
@@ -112,9 +114,33 @@ input:focus,textarea:focus{outline:none;border-color:var(--green)}
         <input type="text" id="na_label" placeholder="My App">
         <label>বর্ণনা</label>
         <textarea id="na_desc" placeholder="অ্যাপের বর্ণনা..."></textarea>
+        <label>ভিডিও লিংক (ঐচ্ছিক)</label>
+        <input type="text" id="na_video" placeholder="https://youtube.com/...">
+        <label>লোগো লিংক — imgbb direct URL (ঐচ্ছিক)</label>
+        <input type="text" id="na_logo" placeholder="https://i.ibb.co/...">
         <button class="btn" onclick="addCustomApp()">➕ অ্যাপ যোগ করো</button>
       </div>
       <div id="customList"></div>
+    </div>
+
+    <div id="tab-up" style="display:none">
+      <div class="card">
+        <h3>⬆ নতুন APK আপলোড</h3>
+        <label>APK / APKS / ZIP ফাইল বেছে নাও</label>
+        <input type="file" id="up_file" accept=".apk,.apks,.zip">
+        <label>দেখানোর নাম (ঐচ্ছিক)</label>
+        <input type="text" id="up_label" placeholder="My App">
+        <label>বর্ণনা / ক্যাপশন (ঐচ্ছিক)</label>
+        <textarea id="up_desc" placeholder="অ্যাপের বর্ণনা..."></textarea>
+        <label>ভিডিও লিংক (YouTube, ঐচ্ছিক)</label>
+        <input type="text" id="up_video" placeholder="https://youtube.com/...">
+        <label>লোগো লিংক — imgbb direct URL (ঐচ্ছিক)</label>
+        <input type="text" id="up_logo" placeholder="https://i.ibb.co/...">
+        <div id="upProg" style="display:none;margin-top:12px;background:#060a08;border:1px solid #1d2b23;border-radius:8px;height:26px;overflow:hidden"><div id="upBar" style="height:100%;width:0%;background:linear-gradient(135deg,#00ff88,#00e5ff);transition:width .2s"></div></div>
+        <div id="upPct" style="font-size:12px;color:var(--muted);margin-top:6px;display:none"></div>
+        <button class="btn" id="upBtn" onclick="uploadApk()">⬆ আপলোড শুরু করো</button>
+        <div class="guide" style="margin-top:10px">ফাইল সরাসরি <b>release v1.0</b>-তে যাবে, আর সাইটে অটো শো করবে। বড় ফাইলে সময় লাগতে পারে — আপলোড চলাকালীন পেজ বন্ধ কোরো না।</div>
+      </div>
     </div>
 
     <div id="tab-set" style="display:none">
@@ -215,6 +241,7 @@ function showTab(t, el){
   el.classList.add("on");
   $("tab-apps").style.display = t==="apps" ? "block" : "none";
   $("tab-add").style.display = t==="add" ? "block" : "none";
+  $("tab-up").style.display = t==="up" ? "block" : "none";
   $("tab-set").style.display = t==="set" ? "block" : "none";
 }
 
@@ -262,7 +289,13 @@ function renderApps(){
       '<textarea data-f="desc" data-i="'+i+'">'+esc(d.desc||"")+'</textarea>'+
       '<label>ভিডিও লিংক (YouTube, ঐচ্ছিক)</label>'+
       '<input type="text" data-f="video" data-i="'+i+'" value="'+esc(d.video||"")+'">'+
+      '<label>লোগো লিংক — imgbb direct URL (ঐচ্ছিক)</label>'+
+      '<input type="text" data-f="logo" data-i="'+i+'" value="'+esc(d.logo||"")+'" placeholder="https://i.ibb.co/...">'+
       '<div class="hideline"><input type="checkbox" data-f="hidden" data-i="'+i+'"'+(d.hidden?" checked":"")+'> <span>🚫 সাইটে লুকিয়ে রাখো</span></div>';
+    var delB = document.createElement("button");
+    delB.className = "del"; delB.textContent = "🗑 এই অ্যাপ ডিলিট করো";
+    delB.onclick = (function(nm){ return function(){ deleteApp(nm); }; })(a.name);
+    card.appendChild(delB);
     box.appendChild(card);
   });
   var b = document.createElement("button");
@@ -280,7 +313,7 @@ function collectApps(){
     var d = A.appsJson.apps[name];
     if(f==="hidden") d.hidden = el.checked;
     else d[f] = el.value.trim();
-    if(!d.desc && !d.video && !d.label && !d.hidden) delete A.appsJson.apps[name];
+    if(!d.desc && !d.video && !d.label && !d.logo && !d.hidden) delete A.appsJson.apps[name];
   }
 }
 
@@ -320,12 +353,13 @@ function addCustomApp(){
     size: Number($("na_size").value.trim()||0),
     label: $("na_label").value.trim(),
     desc: $("na_desc").value.trim(),
-    video: ""
+    video: $("na_video").value.trim(),
+    logo: $("na_logo").value.trim()
   });
   ghPut("apps.json", A.appsJson, "Admin: add custom app "+name)
     .then(function(){
       status("✅ অ্যাপ যোগ হয়েছে!", true);
-      ["na_name","na_url","na_size","na_label","na_desc"].forEach(function(id){ $(id).value=""; });
+      ["na_name","na_url","na_size","na_label","na_desc","na_video","na_logo"].forEach(function(id){ $(id).value=""; });
       renderCustom(); renderStats();
     })
     .catch(function(e){ status("❌ ব্যর্থ: "+e, false); });
@@ -355,6 +389,100 @@ function saveConfig(){
   ghPut("config.json", A.config, "Admin: update site config")
     .then(function(){ status("✅ সেটিংস সেভ হয়েছে!", true); })
     .catch(function(e){ status("❌ ব্যর্থ: "+e, false); });
+}
+
+
+/* ---------- releases: upload & delete ---------- */
+var REL_TAG = "v1.0";
+function ghApi(path, method){
+  return fetch("https://api.github.com/repos/"+REPO+path, {
+    method: method||"GET",
+    headers:{"Authorization":"Bearer "+token, "Accept":"application/vnd.github+json"}
+  }).then(function(r){
+    if(r.status===401) throw "token ভুল/মেয়াদ শেষ — আবার unlock করো";
+    if(!r.ok) throw "GitHub error "+r.status;
+    return r.status===204 ? null : r.json();
+  });
+}
+function getRelease(){ return ghApi("/releases/tags/"+REL_TAG); }
+function fmtMB(b){ return (b/1048576).toFixed(1)+" MB"; }
+
+function uploadApk(){
+  var f = $("up_file").files[0];
+  if(!f){ status("❌ আগে ফাইল বেছে নাও!", false); return; }
+  var btn = $("upBtn"); btn.disabled = true;
+  $("upProg").style.display="none"; $("upPct").style.display="none"; $("upBar").style.width="0%";
+  status("⏳ release-এর সাথে যুক্ত হচ্ছে...", true);
+  getRelease().then(function(rel){
+    var upUrl = rel.upload_url.replace("{?name,label}", "?name="+encodeURIComponent(f.name));
+    status("⬆ আপলোড চলছে: "+f.name+" ("+fmtMB(f.size)+")", true);
+    return new Promise(function(resolve, reject){
+      var xhr = new XMLHttpRequest();
+      xhr.open("POST", upUrl);
+      xhr.setRequestHeader("Authorization", "Bearer "+token);
+      xhr.setRequestHeader("Content-Type", "application/octet-stream");
+      xhr.upload.onprogress = function(e){
+        if(e.lengthComputable){
+          var p = Math.round(e.loaded/e.total*100);
+          $("upProg").style.display="block"; $("upPct").style.display="block";
+          $("upBar").style.width = p+"%";
+          $("upPct").textContent = "⬆ "+p+"% ("+fmtMB(e.loaded)+" / "+fmtMB(e.total)+")";
+        }
+      };
+      xhr.onload = function(){
+        if(xhr.status>=200 && xhr.status<300){ try{ resolve(JSON.parse(xhr.responseText)); }catch(e){ reject("সার্ভার রেসপন্স বোঝা যায়নি!"); } }
+        else if(xhr.status===422){ reject("এই নামে ফাইল আগেই আছে! পুরনোটা ডিলিট করো, বা ফাইলের নাম বদলে আবার চেষ্টা করো।"); }
+        else reject("আপলোড ব্যর্থ (HTTP "+xhr.status+")");
+      };
+      xhr.onerror = function(){ reject("নেটওয়ার্ক সমস্যা! আবার চেষ্টা করো।"); };
+      xhr.send(f);
+    });
+  }).then(function(asset){
+    status("⏳ সাইটের তালিকায় যোগ হচ্ছে...", true);
+    A.assets.push({name: asset.name, size: asset.size, downloads: 0, url: asset.browser_download_url});
+    var meta = {
+      label: $("up_label").value.trim(),
+      desc: $("up_desc").value.trim(),
+      video: $("up_video").value.trim(),
+      logo: $("up_logo").value.trim()
+    };
+    if(meta.label||meta.desc||meta.video||meta.logo){
+      if(!A.appsJson.apps[asset.name]) A.appsJson.apps[asset.name] = {};
+      for(var k in meta) if(meta[k]) A.appsJson.apps[asset.name][k] = meta[k];
+    }
+    return ghPut("assets.json", {updated: new Date().toISOString(), assets: A.assets}, "Admin: upload "+asset.name)
+      .then(function(){ return ghPut("apps.json", A.appsJson, "Admin: meta for "+asset.name); });
+  }).then(function(){
+    status("✅ আপলোড সম্পূর্ণ! ১-২ মিনিটে সাইটে দেখা যাবে।", true);
+    $("up_file").value = "";
+    ["up_label","up_desc","up_video","up_logo"].forEach(function(id){ $(id).value=""; });
+    $("upBar").style.width="0%"; $("upProg").style.display="none"; $("upPct").style.display="none";
+    loadAll();
+  }).catch(function(e){
+    status("❌ "+(typeof e==="string"?e:"ব্যর্থ!"), false);
+  }).finally(function(){ btn.disabled = false; });
+}
+
+function deleteApp(name){
+  if(!confirm("⚠ '"+name+"' ডিলিট করবে?\nরিলিজ + সাইট — দুই জায়গা থেকেই মুছে যাবে!")) return;
+  status("⏳ ডিলিট হচ্ছে...", true);
+  getRelease().then(function(rel){
+    var asset = null;
+    (rel.assets||[]).forEach(function(x){ if(x.name===name) asset = x; });
+    if(!asset) throw "রিলিজে ফাইলটা পাওয়া যায়নি!";
+    return ghApi("/releases/assets/"+asset.id, "DELETE");
+  }).then(function(){
+    A.assets = A.assets.filter(function(x){ return x.name!==name; });
+    delete A.appsJson.apps[name];
+    return ghPut("assets.json", {updated: new Date().toISOString(), assets: A.assets}, "Admin: delete "+name);
+  }).then(function(){
+    return ghPut("apps.json", A.appsJson, "Admin: remove meta "+name);
+  }).then(function(){
+    status("✅ ডিলিট হয়েছে! ১-২ মিনিটে সাইট থেকে সরে যাবে।", true);
+    loadAll();
+  }).catch(function(e){
+    status("❌ "+(typeof e==="string"?e:"ব্যর্থ!"), false);
+  });
 }
 
 /* ---------- GitHub API ---------- */

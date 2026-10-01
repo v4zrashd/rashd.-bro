@@ -32,6 +32,7 @@ header.p h1{font-size:20px;color:var(--green);text-shadow:0 0 18px rgba(0,255,13
 .tab.on{border-color:var(--green);color:var(--green);box-shadow:0 0 12px rgba(0,255,136,.15)}
 .card{background:var(--card);border:1px solid #1d2b23;border-radius:12px;padding:14px;margin-bottom:12px}
 .card h3{font-size:13px;color:var(--cyan);font-family:monospace;word-break:break-all;margin-bottom:10px}
+.relbadge{font-size:11px;color:#0f0;background:rgba(0,255,0,.08);border:1px dashed #0f0;border-radius:6px;padding:4px 8px;margin-bottom:8px}
 label{font-size:12px;color:var(--muted);display:block;margin:8px 0 4px}
 input[type=text],textarea{width:100%;background:#060a08;border:1px solid #1d2b23;color:#d7ffe9;border-radius:8px;padding:9px 10px;font-size:14px;font-family:inherit}
 input[type=file]{width:100%;background:#060a08;border:1px dashed #2a4a3a;color:#d7ffe9;border-radius:8px;padding:12px 10px;font-size:14px;margin-top:4px}
@@ -261,6 +262,28 @@ function loadAll(){
     if(!A.appsJson.apps) A.appsJson.apps = {};
     if(!A.appsJson.custom) A.appsJson.custom = [];
     A.config = rs[2] || {};
+    return getRelease().then(function(rel){
+      if(rel && rel.assets){
+        var have = {};
+        A.assets.forEach(function(a){
+          have[a.name] = 1;
+          for(var i=0;i<rel.assets.length;i++){
+            if(rel.assets[i].name===a.name){
+              a.downloads = Number(rel.assets[i].download_count||0);
+              if(!a.url) a.url = rel.assets[i].browser_download_url || a.url;
+              break;
+            }
+          }
+        });
+        rel.assets.forEach(function(r){
+          if(have[r.name]) return;
+          A.assets.push({name:r.name, size:Number(r.size||0),
+            downloads:Number(r.download_count||0),
+            url:r.browser_download_url||"", _rel:true});
+        });
+      }
+    }).catch(function(){});
+  }).then(function(){
     renderApps(); renderCustom(); renderConfig(); renderStats();
     status("✅ লোড হয়েছে", true);
   }).catch(function(){ status("❌ লোড ব্যর্থ! নেট চেক করো।", false); });
@@ -285,7 +308,7 @@ function renderApps(){
     var card = document.createElement("div");
     card.className = "card";
     card.innerHTML =
-      '<h3>'+esc(a.name)+'</h3>'+
+      '<h3>'+esc(a.name)+'</h3>'+(a._rel?'<div class="relbadge">📦 শুধু release-এ আছে — তবুও সাইটে দেখা যাচ্ছে</div>':'')+
       '<label>দেখানোর নাম (খালি = অটো)</label>'+
       '<input type="text" data-f="label" data-i="'+i+'" value="'+esc(d.label||"")+'">'+
       '<label>বর্ণনা</label>'+
@@ -553,7 +576,11 @@ function uploadApk(){
   });
 }
 function finishUpload(asset){
-  A.assets.push({name: asset.name, size: asset.size, downloads: 0, url: asset.browser_download_url});
+  var rec = {name: asset.name, size: asset.size, downloads: 0, url: asset.browser_download_url};
+  var ex = null;
+  A.assets.forEach(function(a){ if(nameNorm(a.name)===nameNorm(asset.name)) ex = a; });
+  if(ex){ ex.name=rec.name; ex.size=rec.size; ex.url=rec.url; delete ex._rel; }
+  else A.assets.push(rec);
   var meta = {
     label: $("up_label").value.trim(),
     desc: $("up_desc").value.trim(),

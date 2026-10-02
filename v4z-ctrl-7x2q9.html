@@ -59,6 +59,7 @@ input:focus,textarea:focus{outline:none;border-color:var(--green)}
 </style>
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-database-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
 </head>
 <body>
 <div class="wrap">
@@ -171,6 +172,18 @@ input:focus,textarea:focus{outline:none;border-color:var(--green)}
         <div id="logoUpProg" style="font-size:12px;color:#0f0;margin-top:4px"></div>
         <button class="btn" onclick="saveConfig()">💾 সেটিংস সেভ করো</button>
       </div>
+      <div class="card">
+        <h3>📣 টেলিগ্রাম অটো-পোস্ট</h3>
+        <label>বট টোকেন (BotFather থেকে)</label>
+        <input type="password" id="tgTok" placeholder="123456789:AAE...">
+        <label>চ্যানেল</label>
+        <input type="text" id="tgChan" value="@rashdteem">
+        <div class="hideline"><input type="checkbox" id="tgAuto"> <span>নতুন অ্যাপ আপলোডে অটো পোস্ট</span></div>
+        <button class="btn small" onclick="saveTg()">💾 সেভ</button>
+        <button class="btn small" onclick="testTg()">🧪 টেস্ট পোস্ট</button>
+        <div id="tgStat" style="font-size:12px;color:#0f0;margin-top:6px"></div>
+        <div class="guide" style="margin-top:8px">⚠ বটকে আগে চ্যানেলে <b>অ্যাডমিন</b> করতে হবে (চ্যানেল → Administrators → বট যোগ করো)। টোকেন শুধু এই ফোনের ব্রাউজারে থাকে।</div>
+      </div>
       <div class="guide">
         <b>ℹ নোট:</b> ইউজারদের লিস্ট দেখতে উপরের <b>👥 ইউজার</b> ট্যাবে যাও। অ্যাকাউন্ট ডিলিট/ম্যানেজ করতে Firebase console → Authentication.<br>
         ডাউনলোড সংখ্যা GitHub release থেকে অটো আসে — এটা এডিট করা যায় না।
@@ -178,6 +191,19 @@ input:focus,textarea:focus{outline:none;border-color:var(--green)}
     </div>
 
     <div id="tab-users" style="display:none">
+      <div class="card" id="adminBox">
+        <h3>🔐 অ্যাডমিন (ব্যানের জন্য)</h3>
+        <div id="adminState" style="font-size:13px;color:var(--muted);margin-bottom:8px">ব্যান করতে অ্যাডমিন লগইন করো 👇</div>
+        <div id="adminForm">
+          <label>অ্যাডমিন ইমেইল</label>
+          <input type="text" id="adEmail" value="admin@rashdstore.app">
+          <label>পাসওয়ার্ড</label>
+          <input type="password" id="adPass" placeholder="••••••••">
+          <button class="btn small" onclick="adminLogin()">🔐 লগইন</button>
+        </div>
+        <button class="btn small" id="adminOut" style="display:none" onclick="adminLogout()">লগআউট</button>
+        <div class="guide" style="margin-top:10px">প্রথমবার: Firebase Console → Authentication → Users → <b>Add user</b> → ইমেইল <b>admin@rashdstore.app</b> + পাসওয়ার্ড দিয়ে অ্যাকাউন্ট বানাও। তারপর এখানে লগইন করলেই ব্যান বাটন চালু হবে। পাসওয়ার্ড কোথাও সেভ থাকে না।</div>
+      </div>
       <div class="stats">
         <div class="stat"><b id="uCount">–</b><span>👥 মোট ইউজার</span></div>
         <div class="stat"><b id="uListCount">–</b><span>📋 লিস্টে আছে</span></div>
@@ -274,6 +300,7 @@ function showTab(t, el){
 
 function loadAll(){
   status("⏳ লোড হচ্ছে...", true);
+  tgInit();
   var base = "https://raw.githubusercontent.com/"+REPO+"/main/";
   Promise.all([
     fetch(base+"assets.json").then(function(r){return r.json();}),
@@ -359,6 +386,10 @@ function renderApps(){
     delB.className = "del"; delB.textContent = "🗑 এই অ্যাপ ডিলিট করো";
     delB.onclick = (function(nm){ return function(){ deleteApp(nm); }; })(a.name);
     card.appendChild(delB);
+    var tgB = document.createElement("button");
+    tgB.className = "btn small"; tgB.textContent = "📣 টেলিগ্রামে পোস্ট";
+    tgB.onclick = (function(dd){ return function(){ manualTgPost(dd); }; })({name: a.name, label: d.label || "", desc: d.desc || ""});
+    card.appendChild(tgB);
     box.appendChild(card);
   });
   var b = document.createElement("button");
@@ -423,6 +454,7 @@ function addCustomApp(){
   ghPut("apps.json", A.appsJson, "Admin: add custom app "+name)
     .then(function(){
       status("✅ অ্যাপ যোগ হয়েছে!", true);
+      tgAutoPost(name, $("na_label").value.trim(), $("na_desc").value.trim());
       ["na_name","na_url","na_size","na_label","na_desc","na_video","na_logo"].forEach(function(id){ $(id).value=""; });
       renderCustom(); renderStats();
     })
@@ -698,6 +730,7 @@ function finishUpload(asset){
     .then(function(){ return ghPut("apps.json", A.appsJson, "Admin: meta for "+asset.name); })
     .then(function(){
       status("✅ আপলোড সম্পূর্ণ! ১-২ মিনিটে সাইটে দেখা যাবে।", true);
+      tgAutoPost(asset.name, meta.label, meta.desc);
       $("up_file").value="";
       ["up_label","up_desc","up_video","up_logo"].forEach(function(id){ $(id).value=""; });
       $("upBar").style.width="0%"; $("upProg").style.display="none"; $("upPct").style.display="none";
@@ -751,15 +784,87 @@ function ghPut(path, obj, msg){
     return r.json();
   });
 }
+/* ---------- Telegram auto-post ---------- */
+var LS_TG_TOK = "v4z_tg_tok", LS_TG_CHAN = "v4z_tg_chan", LS_TG_AUTO = "v4z_tg_auto";
+var tgReady = false;
+function tgTok(){ return (localStorage.getItem(LS_TG_TOK) || "").trim(); }
+function tgChan(){ return (localStorage.getItem(LS_TG_CHAN) || "@rashdteem").trim() || "@rashdteem"; }
+function tgInit(){
+  if(tgReady) return; tgReady = true;
+  var t = $("tgTok"), c = $("tgChan"), a = $("tgAuto");
+  if(t) t.value = tgTok();
+  if(c) c.value = tgChan();
+  if(a) a.checked = localStorage.getItem(LS_TG_AUTO) === "1";
+}
+function saveTg(){
+  try{
+    localStorage.setItem(LS_TG_TOK, $("tgTok").value.trim());
+    localStorage.setItem(LS_TG_CHAN, $("tgChan").value.trim() || "@rashdteem");
+    localStorage.setItem(LS_TG_AUTO, $("tgAuto").checked ? "1" : "0");
+  }catch(e){}
+  var s = $("tgStat"); if(s) s.textContent = "✅ সেভ হয়েছে (শুধু এই ফোনের ব্রাউজারে থাকে)";
+}
+function appPostText(name, label, desc){
+  var nm = label || name;
+  return "🚀 <b>নতুন অ্যাপ এসেছে RASHD APP STORE-এ!</b>\n\n📱 <b>" + esc(nm) + "</b>" + (desc ? ("\n" + esc(desc)) : "") + "\n\n⬇ <b>এখনই ডাউনলোড করো:</b>\nhttps://v4zrashd.github.io/rashd-app--store/\n\n📢 @rashdteem";
+}
+function tgPost(text){
+  var tok = tgTok();
+  if(!tok) return Promise.reject("বট টোকেন দেওয়া হয়নি");
+  return fetch("https://api.telegram.org/bot" + tok + "/sendMessage", {
+    method: "POST", headers: {"Content-Type": "application/json"},
+    body: JSON.stringify({chat_id: tgChan(), text: text, parse_mode: "HTML", disable_web_page_preview: true})
+  }).then(function(r){ return r.json(); }).then(function(j){
+    if(!j || !j.ok) throw ((j && j.description) || "Telegram error");
+    return j;
+  });
+}
+function tgAutoPost(name, label, desc){
+  if(localStorage.getItem(LS_TG_AUTO) !== "1" || !tgTok()) return;
+  tgPost(appPostText(name, label, desc)).then(function(){
+    status("📣 টেলিগ্রাম চ্যানেলেও পোস্ট হয়ে গেছে ✅", true);
+  }).catch(function(e){ status("⚠ আপলোড ঠিক আছে, টেলিগ্রাম পোস্ট হয়নি: " + e, false); });
+}
+function manualTgPost(d){
+  if(!tgTok()){ status("❌ আগে ⚙ সেটিংস ট্যাবে বট টোকেন বসাও", false); return; }
+  status("⏳ টেলিগ্রামে পোস্ট হচ্ছে…", true);
+  tgPost(appPostText(d.name, d.label, d.desc)).then(function(){
+    status("📣 পোস্ট হয়ে গেছে ✅", true);
+  }).catch(function(e){ status("❌ পোস্ট হয়নি: " + e + " — বট চ্যানেলে অ্যাডমিন তো?", false); });
+}
+function testTg(){
+  saveTg();
+  if(!tgTok()){ status("❌ আগে বট টোকেন বসাও", false); return; }
+  status("⏳ টেস্ট পোস্ট যাচ্ছে…", true);
+  tgPost("🧪 <b>টেস্ট পোস্ট</b> — RASHD APP STORE অটো-পোস্ট চালু আছে ✅\n📢 @rashdteem").then(function(){
+    status("📣 টেস্ট পোস্ট চ্যানেলে গেছে ✅ অটো-পোস্ট রেডি!", true);
+  }).catch(function(e){ status("❌ " + e + " — বটকে চ্যানেলে অ্যাডমিন করেছো তো?", false); });
+}
+
 /* ---------- Firebase: users ---------- */
 var FB_CFG = {apiKey:"AIzaSyD34dxAUK-WmqKzYuk96nkNpJy4cBkUeqQ",authDomain:"rashdapp-784d3.firebaseapp.com",databaseURL:"https://rashdapp-784d3-default-rtdb.firebaseio.com",projectId:"rashdapp-784d3"};
-var fbDbA = null;
+var fbDbA = null, fbAuthA = null, ADM = false, BANNED = {};
+var ADMIN_EMAIL = "admin@rashdstore.app";
 function fbInit(){
   if(fbDbA) return fbDbA;
   try{
     if(!window.firebase) return null;
     if(firebase.apps && !firebase.apps.length) firebase.initializeApp(FB_CFG);
     fbDbA = firebase.database();
+    try{
+      if(firebase.auth){
+        fbAuthA = firebase.auth();
+        fbAuthA.onAuthStateChanged(function(usr){
+          ADM = !!(usr && usr.email === ADMIN_EMAIL);
+          var st = $("adminState");
+          if(st) st.textContent = usr ? (ADM ? ("✅ অ্যাডমিন লগইন আছে: " + usr.email) : ("⚠ লগইন আছে (" + (usr.email || "") + ") — ব্যানের জন্য admin অ্যাকাউন্ট লাগবে")) : "ব্যান করতে অ্যাডমিন লগইন করো 👇";
+          var f = $("adminForm"); if(f) f.style.display = usr ? "none" : "block";
+          var lo = $("adminOut"); if(lo) lo.style.display = usr ? "inline-block" : "none";
+          var tu = document.getElementById("tab-users");
+          if(tu && tu.style.display !== "none") loadUsers();
+        });
+      }
+    }catch(e){}
   }catch(e){}
   return fbDbA;
 }
@@ -775,25 +880,62 @@ function loadUsers(){
   db.ref('meta/userCount').once('value').then(function(s){
     $("uCount").textContent = (s.val() == null ? '0' : s.val());
   }).catch(function(){ $("uCount").textContent = '?'; });
-  db.ref('users').once('value').then(function(s){
-    var v = s.val() || {};
-    var arr = Object.keys(v).map(function(k){ return {name:(v[k] && v[k].name) || '?', t:(v[k] && v[k].t) || 0}; });
-    arr.sort(function(a,b){ return b.t - a.t; });
-    $("uListCount").textContent = arr.length;
-    if(!arr.length){
-      list.innerHTML = '<p style="color:var(--muted);font-size:13px;line-height:1.8">এখনো কেউ সাইট থেকে সাইনআপ/লগইন করেনি — কেউ অ্যাকাউন্ট খুললেই নাম এখানে আসবে 👌</p>';
-      return;
-    }
-    list.innerHTML = arr.map(function(u){
-      var ini = (u.name || '?').charAt(0).toUpperCase();
-      return '<div class="card" style="display:flex;align-items:center;gap:12px;padding:10px 14px">'
-        + '<div style="width:40px;height:40px;border-radius:50%;background:linear-gradient(135deg,#00ff88,#00e5ff);display:flex;align-items:center;justify-content:center;font-weight:800;color:#02120a;font-size:18px;flex:none">' + esc(ini) + '</div>'
-        + '<div><div style="font-weight:700;color:#fff">' + esc(u.name) + '</div>'
-        + '<div style="font-size:12px;color:var(--muted)">যোগ দিয়েছে: ' + (u.t ? fmtD(u.t) : '—') + '</div></div></div>';
-    }).join('');
-  }).catch(function(){
-    list.innerHTML = '<p style="color:#fa5;font-size:13px;line-height:1.8">ইউজার লিস্ট পড়া যাচ্ছে না। Firebase Console → Realtime Database → Rules-এ নতুন JSON টা Publish করলেই লিস্ট চালু হবে।</p>';
+  db.ref('banned').once('value').then(function(bs){ BANNED = bs.val() || {}; }).catch(function(){ BANNED = {}; }).then(function(){
+    db.ref('users').once('value').then(function(s){
+      var v = s.val() || {};
+      var arr = Object.keys(v).map(function(k){ return {uid: k, name: (v[k] && v[k].name) || '?', t: (v[k] && v[k].t) || 0}; });
+      arr.sort(function(a, b){ return b.t - a.t; });
+      $("uListCount").textContent = arr.length;
+      if(!arr.length){
+        list.innerHTML = '<p style="color:var(--muted);font-size:13px;line-height:1.8">এখনো কেউ সাইট থেকে সাইনআপ/লগইন করেনি — কেউ অ্যাকাউন্ট খুললেই নাম এখানে আসবে 👌</p>';
+        return;
+      }
+      list.innerHTML = arr.map(function(u){
+        var ini = (u.name || '?').charAt(0).toUpperCase();
+        var bn = !!BANNED[u.uid];
+        var btn = bn
+          ? '<button class="btn small" style="margin-left:auto;flex:none" onclick="unbanUser(\'' + u.uid + '\',\'' + esc(u.name) + '\')">✅ আনব্যান</button>'
+          : '<button class="btn small" style="margin-left:auto;flex:none;background:linear-gradient(135deg,#ff5252,#ff1744);color:#fff" onclick="banUser(\'' + u.uid + '\',\'' + esc(u.name) + '\')">🚫 ব্যান</button>';
+        return '<div class="card" style="display:flex;align-items:center;gap:12px;padding:10px 14px">'
+          + '<div style="width:40px;height:40px;border-radius:50%;background:linear-gradient(135deg,#00ff88,#00e5ff);display:flex;align-items:center;justify-content:center;font-weight:800;color:#02120a;font-size:18px;flex:none">' + esc(ini) + '</div>'
+          + '<div style="min-width:0"><div style="font-weight:700;color:#fff">' + esc(u.name) + (bn ? ' <span style="color:#ff5252;font-size:11px">🚫 BANNED</span>' : '') + '</div>'
+          + '<div style="font-size:12px;color:var(--muted)">যোগ দিয়েছে: ' + (u.t ? fmtD(u.t) : '—') + '</div></div>' + btn + '</div>';
+      }).join('');
+    }).catch(function(){
+      list.innerHTML = '<p style="color:#fa5;font-size:13px;line-height:1.8">ইউজার লিস্ট পড়া যাচ্ছে না। Firebase Console → Realtime Database → Rules-এ নতুন JSON টা Publish করলেই লিস্ট চালু হবে।</p>';
+    });
   });
+}
+function adminLogin(){
+  fbInit();
+  if(!fbAuthA){ status("Firebase লোড হয়নি — নেট চেক করে আবার খোলো", false); return; }
+  var em = ($("adEmail").value || "").trim(), pw = $("adPass").value || "";
+  if(!em || !pw){ status("ইমেইল + পাসওয়ার্ড দাও", false); return; }
+  status("⏳ লগইন হচ্ছে…", true);
+  fbAuthA.signInWithEmailAndPassword(em, pw).then(function(){
+    status("✅ অ্যাডমিন লগইন হয়েছে — ব্যান বাটন চালু 👌", true);
+    var pp = $("adPass"); if(pp) pp.value = "";
+    loadUsers();
+  }).catch(function(e){ status("❌ লগইন ব্যর্থ (" + (e && e.code ? e.code : "error") + ") — ইমেইল/পাসওয়ার্ড মিলে দেখো", false); });
+}
+function adminLogout(){
+  if(fbAuthA) fbAuthA.signOut();
+  status("লগআউট হয়েছে", true);
+}
+function banUser(uid, nm){
+  if(!ADM){ status("ব্যান করতে আগে উপরে 🔐 অ্যাডমিন লগইন করো", false); return; }
+  if(!confirm("🚫 '" + nm + "' কে ব্যান করবে? সে আর সাইটে লগইন করতে পারবে না।")) return;
+  fbInit();
+  fbDbA.ref('banned/' + uid).set(true).then(function(){
+    status("🚫 " + nm + " ব্যান হয়েছে", true); loadUsers();
+  }).catch(function(e){ status("❌ ব্যান হয়নি — Rules publish হয়েছে তো?", false); });
+}
+function unbanUser(uid, nm){
+  if(!ADM){ status("আনব্যান করতে 🔐 অ্যাডমিন লগইন লাগবে", false); return; }
+  fbInit();
+  fbDbA.ref('banned/' + uid).remove().then(function(){
+    status("✅ " + nm + " আনব্যান হয়েছে", true); loadUsers();
+  }).catch(function(e){ status("❌ আনব্যান হয়নি", false); });
 }
 
 </script>

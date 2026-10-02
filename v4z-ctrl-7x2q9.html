@@ -196,13 +196,13 @@ input:focus,textarea:focus{outline:none;border-color:var(--green)}
         <div id="adminState" style="font-size:13px;color:var(--muted);margin-bottom:8px">ব্যান করতে অ্যাডমিন লগইন করো 👇</div>
         <div id="adminForm">
           <label>অ্যাডমিন ইমেইল</label>
-          <input type="text" id="adEmail" value="admin@rashdstore.app">
+          <input type="text" id="adEmail" value="rashedbro123@rashdstore.app">
           <label>পাসওয়ার্ড</label>
           <input type="password" id="adPass" placeholder="••••••••">
           <button class="btn small" onclick="adminLogin()">🔐 লগইন</button>
         </div>
         <button class="btn small" id="adminOut" style="display:none" onclick="adminLogout()">লগআউট</button>
-        <div class="guide" style="margin-top:10px">প্রথমবার: Firebase Console → Authentication → Users → <b>Add user</b> → ইমেইল <b>admin@rashdstore.app</b> + পাসওয়ার্ড দিয়ে অ্যাকাউন্ট বানাও। তারপর এখানে লগইন করলেই ব্যান বাটন চালু হবে। পাসওয়ার্ড কোথাও সেভ থাকে না।</div>
+        <div class="guide" style="margin-top:10px">তোমার নিজের সাইট অ্যাকাউন্টটাই (<b>rashedbro123@rashdstore.app</b>) অ্যাডমিন — ওই ইমেইল + পাসওয়ার্ড দিয়ে লগইন করলেই ব্যান বাটন চালু হবে। আলাদা অ্যাকাউন্ট বানানো লাগবে না। পাসওয়ার্ড কোথাও সেভ থাকে না।</div>
       </div>
       <div class="stats">
         <div class="stat"><b id="uCount">–</b><span>👥 মোট ইউজার</span></div>
@@ -844,7 +844,7 @@ function testTg(){
 /* ---------- Firebase: users ---------- */
 var FB_CFG = {apiKey:"AIzaSyD34dxAUK-WmqKzYuk96nkNpJy4cBkUeqQ",authDomain:"rashdapp-784d3.firebaseapp.com",databaseURL:"https://rashdapp-784d3-default-rtdb.firebaseio.com",projectId:"rashdapp-784d3"};
 var fbDbA = null, fbAuthA = null, ADM = false, BANNED = {};
-var ADMIN_EMAIL = "admin@rashdstore.app";
+var ADMIN_EMAILS = ["rashedbro123@rashdstore.app", "admin@rashdstore.app"];
 function fbInit(){
   if(fbDbA) return fbDbA;
   try{
@@ -855,9 +855,9 @@ function fbInit(){
       if(firebase.auth){
         fbAuthA = firebase.auth();
         fbAuthA.onAuthStateChanged(function(usr){
-          ADM = !!(usr && usr.email === ADMIN_EMAIL);
+          ADM = !!(usr && ADMIN_EMAILS.indexOf(usr.email) >= 0);
           var st = $("adminState");
-          if(st) st.textContent = usr ? (ADM ? ("✅ অ্যাডমিন লগইন আছে: " + usr.email) : ("⚠ লগইন আছে (" + (usr.email || "") + ") — ব্যানের জন্য admin অ্যাকাউন্ট লাগবে")) : "ব্যান করতে অ্যাডমিন লগইন করো 👇";
+          if(st) st.textContent = usr ? (ADM ? ("✅ অ্যাডমিন লগইন আছে: " + usr.email) : ("⚠ লগইন আছে (" + (usr.email || "") + ") — ব্যান শুধু অ্যাডমিন ইমেইল থেকে হবে")) : "ব্যান করতে অ্যাডমিন লগইন করো 👇";
           var f = $("adminForm"); if(f) f.style.display = usr ? "none" : "block";
           var lo = $("adminOut"); if(lo) lo.style.display = usr ? "inline-block" : "none";
           var tu = document.getElementById("tab-users");

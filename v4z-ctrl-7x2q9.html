@@ -184,6 +184,17 @@ input:focus,textarea:focus{outline:none;border-color:var(--green)}
         <div id="tgStat" style="font-size:12px;color:#0f0;margin-top:6px"></div>
         <div class="guide" style="margin-top:8px">⚠ বটকে আগে চ্যানেলে <b>অ্যাডমিন</b> করতে হবে (চ্যানেল → Administrators → বট যোগ করো)। টোকেন শুধু এই ফোনের ব্রাউজারে থাকে।</div>
       </div>
+      <div class="card">
+        <h3>📱 Number Lookup (ইউজার প্যানেল)</h3>
+        <label>ইউজার প্যানেল লিংক</label>
+        <input type="text" value="https://rashd-bro.vercel.app/" readonly>
+        <label>API Key (number-lookup)</label>
+        <input type="password" id="nlKey" placeholder="তোমার lookup API key এখানে বসাও">
+        <div class="hideline"><input type="checkbox" id="nlOn"> <span>ইউজার প্যানেল চালু রাখো</span></div>
+        <button class="btn small" onclick="saveNlCfg()">💾 সেভ</button>
+        <div id="nlStat" style="font-size:12px;color:#0f0;margin-top:6px"></div>
+        <div class="guide" style="margin-top:8px">⚠ key সেভ হয় <b>rashd-app--store</b> repo-র <b>number-lookup-config.json</b> ফাইলে। প্যানেল চালু থাকলে key-টা ইউজারদের ব্রাউজারে যায়, তাই প্যানেলের লিংক শুধু বিশ্বস্ত লোকদের দাও। key বদলাতে এখানে নতুন key বসিয়ে আবার সেভ করলেই হবে।</div>
+      </div>
       <div class="guide">
         <b>ℹ নোট:</b> ইউজারদের লিস্ট দেখতে উপরের <b>👥 ইউজার</b> ট্যাবে যাও। অ্যাকাউন্ট ডিলিট/ম্যানেজ করতে Firebase console → Authentication.<br>
         ডাউনলোড সংখ্যা GitHub release থেকে অটো আসে — এটা এডিট করা যায় না।
@@ -300,7 +311,7 @@ function showTab(t, el){
 
 function loadAll(){
   status("⏳ লোড হচ্ছে...", true);
-  tgInit();
+  tgInit(); loadNlCfg();
   var base = "https://raw.githubusercontent.com/"+REPO+"/main/";
   Promise.all([
     fetch(base+"assets.json").then(function(r){return r.json();}),
@@ -803,6 +814,25 @@ function saveTg(){
     localStorage.setItem(LS_TG_AUTO, $("tgAuto").checked ? "1" : "0");
   }catch(e){}
   var s = $("tgStat"); if(s) s.textContent = "✅ সেভ হয়েছে (শুধু এই ফোনের ব্রাউজারে থাকে)";
+}
+var nlCfgLoaded = false;
+function loadNlCfg(){
+  if(nlCfgLoaded) return; nlCfgLoaded = true;
+  ghGet("number-lookup-config.json").then(function(f){
+    try{
+      var cfg = JSON.parse(decodeURIComponent(escape(atob(String(f.content||"").replace(/\s/g,"")))));
+      var k = $("nlKey"), o = $("nlOn"), s = $("nlStat");
+      if(k) k.value = cfg.apiKey || "";
+      if(o) o.checked = cfg.enabled === true;
+      if(s) s.textContent = cfg.enabled ? "ℹ বর্তমান অবস্থা: চালু আছে" : "ℹ বর্তমান অবস্থা: বন্ধ আছে";
+    }catch(e){}
+  }, function(){});
+}
+function saveNlCfg(){
+  var cfg = {enabled: $("nlOn").checked, apiKey: $("nlKey").value.trim(), updatedAt: new Date().toISOString()};
+  ghPut("number-lookup-config.json", cfg, "Admin: update Number Lookup config")
+    .then(function(){ var s = $("nlStat"); if(s) s.textContent = "✅ সেভ হয়েছে! ইউজার প্যানেলে কয়েক মিনিটে আপডেট হবে।"; status("✅ Number Lookup সেটিংস সেভ হয়েছে!", true); })
+    .catch(function(e){ status("❌ ব্যর্থ: " + e, false); });
 }
 function appPostText(name, label, desc){
   var nm = label || name;

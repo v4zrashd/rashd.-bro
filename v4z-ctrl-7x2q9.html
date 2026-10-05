@@ -99,6 +99,7 @@ input:focus,textarea:focus{outline:none;border-color:var(--green)}
       <div class="stat"><b id="stH">–</b><span>লুকানো</span></div>
     </div>
     <div class="tabs">
+      <button class="tab" data-t="dash" onclick="showTab('dash',this)">📊 ওভারভিউ</button>
       <button class="tab on" data-t="apps" onclick="showTab('apps',this)">📱 অ্যাপ</button>
       <button class="tab" data-t="add" onclick="showTab('add',this)">➕ নতুন অ্যাপ</button>
       <button class="tab" data-t="up" onclick="showTab('up',this)">⬆ আপলোড</button>
@@ -106,6 +107,18 @@ input:focus,textarea:focus{outline:none;border-color:var(--green)}
       <button class="tab" data-t="users" onclick="showTab('users',this)">👥 ইউজার</button>
     </div>
 
+    <div id="tab-dash" style="display:none">
+      <div class="card">
+        <h3>📊 সার্ভিসের অবস্থা</h3>
+        <div id="dashSvc" style="font-size:14px;line-height:2">⏳ লোড হচ্ছে...</div>
+      </div>
+      <div class="card">
+        <h3>🔑 কি হিসাব</h3>
+        <div id="dashKeys" style="font-size:14px;line-height:1.9">⏳ লোড হচ্ছে...</div>
+        <button class="btn small" onclick="loadDash(true)" style="margin-top:10px">🔄 রিফ্রেশ</button>
+        <div class="guide" style="margin-top:8px">ℹ কি-হিসাব দেখতে 👥 ইউজার ট্যাবে এডমিন লগইন লাগবে।</div>
+      </div>
+    </div>
     <div id="tab-apps"></div>
 
     <div id="tab-add" style="display:none">
@@ -203,6 +216,13 @@ input:focus,textarea:focus{outline:none;border-color:var(--green)}
         <button class="btn small" onclick="saveKeyCfg()">💾 সেভ</button>
         <div id="keyCfgStat" style="font-size:12px;color:#0f0;margin-top:6px"></div>
         <div class="guide" style="margin-top:8px">⚠ এক সময়ে একটাই মোড চলবে। মোড সেভ হয় <b>rashd-app--store</b> repo-র <b>key-config.json</b> ফাইলে — keyapp আর কি বট কয়েক মিনিটের মধ্যে নতুন মোড ধরে নেবে। হাতে থাকা পুরনো কি সবসময়ই চলবে।</div>
+      </div>
+      <div class="card">
+        <h3>📁 File Host (সার্ভিস সুইচ)</h3>
+        <div class="hideline"><input type="checkbox" id="fhOn"> <span>File Host চালু রাখো</span></div>
+        <button class="btn small" onclick="saveFhCfg()">💾 সেভ</button>
+        <div id="fhStat" style="font-size:12px;color:#0f0;margin-top:6px"></div>
+        <div class="guide" style="margin-top:8px">⚠ বন্ধ করলে File Host-এ সবাই "সাময়িক বন্ধ" দেখবে — কারো কি পোড়বে না, আপলোডও হবে না। সেভ হয় <b>rashd-app--store</b> repo-র <b>filehost-config.json</b> ফাইলে; কার্যকর হতে কয়েক মিনিট লাগতে পারে।</div>
       </div>
       <div class="guide">
         <b>ℹ নোট:</b> ইউজারদের লিস্ট দেখতে উপরের <b>👥 ইউজার</b> ট্যাবে যাও। অ্যাকাউন্ট ডিলিট/ম্যানেজ করতে Firebase console → Authentication.<br>
@@ -310,17 +330,19 @@ function showTab(t, el){
   var tabs = document.querySelectorAll(".tab");
   for(var i=0;i<tabs.length;i++) tabs[i].classList.remove("on");
   el.classList.add("on");
+  $("tab-dash").style.display = t==="dash" ? "block" : "none";
   $("tab-apps").style.display = t==="apps" ? "block" : "none";
   $("tab-add").style.display = t==="add" ? "block" : "none";
   $("tab-up").style.display = t==="up" ? "block" : "none";
   $("tab-set").style.display = t==="set" ? "block" : "none";
   $("tab-users").style.display = t==="users" ? "block" : "none";
   if(t==="users") loadUsers();
+  if(t==="dash") loadDash();
 }
 
 function loadAll(){
   status("⏳ লোড হচ্ছে...", true);
-  tgInit(); loadNlCfg(); loadKeyCfg();
+  tgInit(); loadNlCfg(); loadKeyCfg(); loadFhCfg();
   var base = "https://raw.githubusercontent.com/"+REPO+"/main/";
   Promise.all([
     fetch(base+"assets.json").then(function(r){return r.json();}),
@@ -862,6 +884,83 @@ function saveKeyCfg(){
   var cfg = {mode: m, updatedAt: new Date().toISOString()};
   ghPut("key-config.json", cfg, "Admin: update key mode")
     .then(function(){ var s = $("keyCfgStat"); if(s) s.textContent = "✅ সেভ হয়েছে! keyapp ও কি বটে কয়েক মিনিটে আপডেট হবে।"; status("✅ কি মোড সেভ হয়েছে: " + (m === "referral" ? "রেফার" : "অ্যাড"), true); })
+    .catch(function(e){ status("❌ ব্যর্থ: " + e, false); });
+}
+var dashLoaded = false;
+function rawCfg(name){
+  return fetch("https://raw.githubusercontent.com/v4zrashd/rashd-app--store/main/" + name)
+    .then(function(r){ return r.json(); });
+}
+function loadDash(force){
+  var svc = $("dashSvc"), kd = $("dashKeys");
+  if(!svc || !kd) return;
+  if(dashLoaded && !force) return;
+  dashLoaded = true;
+  svc.textContent = "⏳ লোড হচ্ছে...";
+  Promise.all([
+    rawCfg("number-lookup-config.json").catch(function(){ return {}; }),
+    rawCfg("key-config.json").catch(function(){ return {}; }),
+    rawCfg("filehost-config.json").catch(function(){ return {}; })
+  ]).then(function(cs){
+    var nl = cs[0] || {}, kc = cs[1] || {}, fh = cs[2] || {};
+    svc.innerHTML =
+      "🔍 Number Lookup: <b>" + (nl.enabled ? "✅ চালু" : "⏸ বন্ধ") + "</b><br>" +
+      "🔑 কি মোড: <b>" + (kc.mode === "referral" ? "👥 রেফার" : "📺 অ্যাড") + "</b><br>" +
+      "📁 File Host: <b>" + (fh.enabled === false ? "⏸ বন্ধ" : "✅ চালু") + "</b>";
+  }).catch(function(){ svc.textContent = "⚠ অবস্থা আনা যায়নি — নেট চেক করে 🔄 রিফ্রেশ দাও।"; });
+  var db = fbInit();
+  if(!db || !ADM){
+    kd.innerHTML = "🔐 কি-হিসাব দেখতে আগে 👥 ইউজার ট্যাবে এডমিন লগইন করো, তারপর এখানে 🔄 রিফ্রেশ দাও।";
+    return;
+  }
+  kd.textContent = "⏳ হিসাব আসছে...";
+  db.ref("meta/userCount").once("value")
+    .then(function(s){ return s.val(); }, function(){ return null; })
+    .then(function(uc){
+      return db.ref("keys").once("value").then(function(snap){ return { uc: uc, all: snap.val() || {} }; });
+    })
+    .then(function(r){
+      var all = r.all, total = 0, used = 0, bySrc = {}, byFor = {}, mintToday = 0, usedToday = 0;
+      var day = new Date(); day.setHours(0,0,0,0); var dayMs = day.getTime();
+      Object.keys(all).forEach(function(code){
+        var k = all[code] || {}; total++;
+        if(k.src) bySrc[k.src] = (bySrc[k.src] || 0) + 1;
+        if(typeof k.t === "number" && k.t >= dayMs) mintToday++;
+        if(k.used === true){
+          used++;
+          var f = k.usedFor || "অন্যান্য";
+          byFor[f] = (byFor[f] || 0) + 1;
+          if(typeof k.usedAt === "number" && k.usedAt >= dayMs) usedToday++;
+        }
+      });
+      function fmt(o){ var p = []; for(var x in o) p.push(x + ": " + o[x]); return p.length ? p.join(" • ") : "—"; }
+      kd.innerHTML =
+        "🛍 Store ওয়েব ইউজার: <b>" + (r.uc == null ? "—" : r.uc) + "</b><br>" +
+        "🔑 মোট কি: <b>" + total + "</b> • ব্যবহৃত: <b>" + used + "</b> • বাকি: <b>" + (total - used) + "</b><br>" +
+        "📅 আজ তৈরি: <b>" + mintToday + "</b> • আজ ব্যবহৃত: <b>" + usedToday + "</b><br>" +
+        "🧾 এসেছে: " + fmt(bySrc) + "<br>" +
+        "🎯 খরচ: " + fmt(byFor);
+    })
+    .catch(function(){
+      kd.innerHTML = "⚠ কি-হিসাব পড়া যাচ্ছে না। Firebase rules (v5)-এ এডমিন-রিড যোগ না থাকলে এমন হবে — Muse-এর দেওয়া rules ফাইলটা ফোনে একবার আপডেট করলেই চালু হবে।";
+    });
+}
+var fhCfgLoaded = false;
+function loadFhCfg(){
+  if(fhCfgLoaded) return; fhCfgLoaded = true;
+  ghGet("filehost-config.json").then(function(f){
+    try{
+      var cfg = JSON.parse(decodeURIComponent(escape(atob(String(f.content||"").replace(/\s/g,"")))));
+      var o = $("fhOn"), s = $("fhStat");
+      if(o) o.checked = cfg.enabled !== false;
+      if(s) s.textContent = cfg.enabled === false ? "ℹ বর্তমান অবস্থা: বন্ধ আছে" : "ℹ বর্তমান অবস্থা: চালু আছে";
+    }catch(e){}
+  }, function(){});
+}
+function saveFhCfg(){
+  var cfg = {enabled: $("fhOn").checked, updatedAt: new Date().toISOString()};
+  ghPut("filehost-config.json", cfg, "Admin: update File Host switch")
+    .then(function(){ var s = $("fhStat"); if(s) s.textContent = "✅ সেভ হয়েছে! কয়েক মিনিটে কার্যকর হবে।"; status("✅ File Host " + (cfg.enabled ? "চালু" : "বন্ধ") + " করা হয়েছে", true); })
     .catch(function(e){ status("❌ ব্যর্থ: " + e, false); });
 }
 function appPostText(name, label, desc){

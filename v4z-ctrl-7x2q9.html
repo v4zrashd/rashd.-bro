@@ -105,6 +105,7 @@ input:focus,textarea:focus{outline:none;border-color:var(--green)}
       <button class="tab" data-t="up" onclick="showTab('up',this)">⬆ আপলোড</button>
       <button class="tab" data-t="set" onclick="showTab('set',this)">🎨 সাইট সেটিং</button>
       <button class="tab" data-t="users" onclick="showTab('users',this)">👥 ইউজার</button>
+      <button class="tab" data-t="control" onclick="showTab('control',this)">🕹 কন্ট্রোল</button>
     </div>
 
     <div id="tab-dash" style="display:none">
@@ -230,6 +231,91 @@ input:focus,textarea:focus{outline:none;border-color:var(--green)}
       </div>
     </div>
 
+
+    <div id="tab-control" style="display:none">
+      <style>
+        .cc-wrap{max-width:1180px;margin:0 auto}.cc-head,.cc-card{background:#0d1420;border:1px solid #1f3b2d;border-radius:14px;padding:14px;margin:10px 0;box-shadow:0 0 0 1px rgba(0,255,157,.04)}
+        .cc-head h2,.cc-card h3{margin:0 0 8px;color:#00ff9d}.cc-note{color:#9fb7aa;font-size:13px;margin-top:8px;line-height:1.5}.cc-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(245px,1fr));gap:12px}.cc-wide{grid-column:1/-1}
+        .cc-top{display:flex;gap:10px;align-items:center}.cc-logo{width:52px;height:52px;border-radius:12px;object-fit:cover;background:#071018;border:1px solid #1f3b2d}.cc-title{font-weight:700;color:#eafff5}.cc-sub{color:#8aa79a;font-size:12px}.cc-card label{display:block;color:#bfe9d5;font-size:13px;margin:9px 0 4px}.cc-card input[type=text],.cc-card input[type=number],.cc-card textarea,.cc-card select{width:100%;box-sizing:border-box}.cc-check{display:flex;gap:8px;align-items:center;color:#dffcef}.cc-links{display:flex;flex-wrap:wrap;gap:8px;margin-top:10px}.cc-links a{color:#04160d;background:#00ff9d;text-decoration:none;border-radius:8px;padding:6px 9px;font-size:12px;font-weight:700}.cc-stats{line-height:1.8;color:#eafff5}.cc-actions{display:flex;flex-wrap:wrap;gap:8px;margin-top:10px}
+      </style>
+      <div class="cc-wrap">
+        <div class="cc-head">
+          <h2>🕹 V4Z Control Center</h2>
+          <div class="cc-note">সব মিনি-অ্যাপ আর সাইটের সেটিং, লোগো, ঘোষণা, হিসাব আর ব্রডকাস্ট — এক প্যানেল থেকে। নিচের কার্ডে বদলে “সব সেটিং সেভ” চাপলেই GitHub কনফিগে সেভ হবে।</div>
+          <div class="cc-actions">
+            <button class="btn small" onclick="ccLoad(true)">🔄 রিফ্রেশ</button>
+            <button class="btn small" onclick="ccSave()">💾 সব সেটিং সেভ</button>
+          </div>
+          <div id="ccStat" class="cc-note">⏳ কন্ট্রোল ডেটা লোড হচ্ছে...</div>
+        </div>
+
+        <div class="cc-grid">
+          <section class="cc-card">
+            <div class="cc-top"><img id="cc_dl_img" class="cc-logo" alt=""><div><div class="cc-title">📥 Downloader</div><div class="cc-sub">@rashxdbot Mini App</div></div></div>
+            <label class="cc-check"><input type="checkbox" id="cc_dl_enabled"> সার্ভিস চালু</label>
+            <label>নাম</label><input type="text" id="cc_dl_name">
+            <label>লোগো URL</label><input type="text" id="cc_dl_logo" oninput="ccLogo('dl')" placeholder="https://.../logo.png">
+            <label>ঘোষণা ব্যানার</label><textarea id="cc_dl_announce" rows="2" placeholder="ইউজারদের দেখানোর ঘোষণা"></textarea>
+            <label>সর্বোচ্চ কোয়ালিটি অপশন</label><input type="number" id="cc_dl_max" min="1" max="12">
+            <label>সার্ভার টাইমআউট (সেকেন্ড)</label><input type="number" id="cc_dl_timeout" min="5" max="30">
+            <label>রিট্রাই</label><input type="number" id="cc_dl_retries" min="0" max="3">
+            <label class="cc-check"><input type="checkbox" id="cc_dl_social"> নিচে সোশ্যাল লাইন দেখাও (YouTube • TikTok • Facebook...)</label>
+            <div class="cc-links"><a href="https://rashd-bro.vercel.app/dl.html" target="_blank" rel="noopener">Mini App খোলো</a><a href="https://t.me/rashxdbot" target="_blank" rel="noopener">বট খোলো</a></div>
+          </section>
+
+          <section class="cc-card">
+            <div class="cc-top"><img id="cc_nl_img" class="cc-logo" alt=""><div><div class="cc-title">🔍 Number Lookup</div><div class="cc-sub">@rashd1_bot Mini App</div></div></div>
+            <label class="cc-check"><input type="checkbox" id="cc_nl_enabled"> সার্ভিস চালু</label>
+            <label>নাম</label><input type="text" id="cc_nl_name">
+            <label>লোগো URL</label><input type="text" id="cc_nl_logo" oninput="ccLogo('nl')" placeholder="https://.../logo.png">
+            <label>ঘোষণা ব্যানার</label><textarea id="cc_nl_announce" rows="2" placeholder="ইউজারদের দেখানোর ঘোষণা"></textarea>
+            <div class="cc-links"><a href="https://rashd-bro.vercel.app/" target="_blank" rel="noopener">Mini App খোলো</a><a href="https://t.me/rashd1_bot" target="_blank" rel="noopener">বট খোলো</a></div>
+          </section>
+
+          <section class="cc-card">
+            <div class="cc-top"><img id="cc_fh_img" class="cc-logo" alt=""><div><div class="cc-title">📁 File Host</div><div class="cc-sub">@rashd_hosting_bot Mini App</div></div></div>
+            <label class="cc-check"><input type="checkbox" id="cc_fh_enabled"> সার্ভিস চালু</label>
+            <label>নাম</label><input type="text" id="cc_fh_name">
+            <label>লোগো URL</label><input type="text" id="cc_fh_logo" oninput="ccLogo('fh')" placeholder="https://.../logo.png">
+            <label>ঘোষণা ব্যানার</label><textarea id="cc_fh_announce" rows="2" placeholder="ইউজারদের দেখানোর ঘোষণা"></textarea>
+            <div class="cc-links"><a href="https://rashd-bro.vercel.app/host.html" target="_blank" rel="noopener">Mini App খোলো</a><a href="https://t.me/rashd_hosting_bot" target="_blank" rel="noopener">বট খোলো</a></div>
+          </section>
+
+          <section class="cc-card">
+            <div class="cc-top"><img id="cc_st_img" class="cc-logo" alt=""><div><div class="cc-title">🏪 RASHD App Store</div><div class="cc-sub">ওয়েব স্টোর + Key App</div></div></div>
+            <label class="cc-check"><input type="checkbox" id="cc_st_enabled"> স্টোর চালু</label>
+            <label>টাইটেল</label><input type="text" id="cc_st_title">
+            <label>হেডিং</label><input type="text" id="cc_st_heading">
+            <label>লোগো URL</label><input type="text" id="cc_st_logo" oninput="ccLogo('st')" placeholder="https://.../logo.png">
+            <label>ঘোষণা ব্যানার</label><textarea id="cc_st_announce" rows="2" placeholder="স্টোরের উপরে দেখানোর ঘোষণা"></textarea>
+            <div class="cc-links"><a href="https://v4zrashd.github.io/rashd-app--store/" target="_blank" rel="noopener">স্টোর খোলো</a><a href="https://t.me/rashd12bot" target="_blank" rel="noopener">Key Bot খোলো</a></div>
+          </section>
+        </div>
+
+        <section class="cc-card cc-wide">
+          <h3>📊 হিসাব</h3>
+          <div id="ccStats" class="cc-stats">⏳ হিসাব লোড হচ্ছে...</div>
+          <div class="cc-actions"><button class="btn small" onclick="ccLoadStats(true)">🔄 হিসাব রিফ্রেশ</button></div>
+          <div class="cc-note">বটের নিজের ইউজার/ডাউনলোড হিসাব এখন সংশ্লিষ্ট বটের /admin প্যানেলে লাইভ আছে; ওয়েব হিসাব এখানে Firebase + GitHub থেকে আসে।</div>
+        </section>
+
+        <section class="cc-card cc-wide">
+          <h3>📣 ব্রডকাস্ট</h3>
+          <label>কাদের কাছে</label>
+          <select id="cc_bc_target">
+            <option value="all">সবাই</option>
+            <option value="downloader">Downloader ইউজার</option>
+            <option value="number">Number Lookup ইউজার</option>
+            <option value="filehost">File Host ইউজার</option>
+            <option value="store">App Store ইউজার</option>
+          </select>
+          <label>মেসেজ</label><textarea id="cc_bc_text" rows="4" placeholder="সবাইকে পাঠানোর মেসেজ লেখো..."></textarea>
+          <div class="cc-actions"><button class="btn small" onclick="ccBroadcast()">📣 ব্রডকাস্ট রিকোয়েস্ট তৈরি</button></div>
+          <div id="ccBcStat" class="cc-note">ব্রডকাস্ট রিকোয়েস্ট GitHub আউটবক্সে যাবে; বট-সংযোগ আপডেট হলে সংশ্লিষ্ট বট তার ইউজার তালিকা ধরে পাঠাবে।</div>
+        </section>
+      </div>
+    </div>
+
     <div id="tab-users" style="display:none">
       <div class="card" id="adminBox">
         <h3>🔐 অ্যাডমিন (ব্যানের জন্য)</h3>
@@ -336,7 +422,9 @@ function showTab(t, el){
   $("tab-up").style.display = t==="up" ? "block" : "none";
   $("tab-set").style.display = t==="set" ? "block" : "none";
   $("tab-users").style.display = t==="users" ? "block" : "none";
+  $("tab-control").style.display = t==="control" ? "block" : "none";
   if(t==="users") loadUsers();
+  if(t==="control") ccLoad();
   if(t==="dash") loadDash();
 }
 
@@ -1098,5 +1186,108 @@ function unbanUser(uid, nm){
 }
 
 </script>
+
+<script>
+/* ---------- V4Z Control Center ---------- */
+var ccLoaded = false, ccCfg = null, ccNlApiKey = "", ccStoreCfg = {};
+function ccDef(){
+  return {updatedAt:"", services:{
+    downloader:{enabled:true,name:"V4Z Downloader",logo:"",announcement:"",maxFormats:8,socketTimeout:10,retries:1,showSocial:false},
+    number:{enabled:true,name:"Number Lookup",logo:"",announcement:""},
+    filehost:{enabled:true,name:"V4Z File Host",logo:"",announcement:""},
+    store:{enabled:true,title:"RASHD App Store",heading:"RASHD APP STORE",logo:"",announcement:""}
+  }, broadcast:{}};
+}
+function ccDecode(f){ try{ return JSON.parse(decodeURIComponent(escape(atob(String((f&&f.content)||"").replace(/\s/g,""))))); }catch(e){ return null; } }
+function ccGet(path){ return ghGet(path).then(ccDecode).catch(function(){ return null; }); }
+function ccPut(path, obj, msg){
+  return ghGet(path).then(function(f){ return f.sha; }, function(){ return null; }).then(function(sha){
+    var body = {message:msg, content:b64encodeUnicode(JSON.stringify(obj,null,2)+"\n")};
+    if(sha) body.sha = sha;
+    return fetch("https://api.github.com/repos/"+REPO+"/contents/"+path, {method:"PUT", headers:{"Authorization":"Bearer "+token, "Accept":"application/vnd.github+json", "Content-Type":"application/json"}, body:JSON.stringify(body)});
+  }).then(function(r){ if(r.status===401) throw "token ভুল/মেয়াদ শেষ"; if(!r.ok) throw "GitHub error "+r.status; return r.json(); });
+}
+function ccVal(id){ var e=$(id); return e ? String(e.value||"").trim() : ""; }
+function ccNum(id, def){ var v=parseInt(ccVal(id),10); return isNaN(v) ? def : v; }
+function ccChk(id){ var e=$(id); return !!(e && e.checked); }
+function ccSet(id, v){ var e=$(id); if(e) e.value = (v==null ? "" : v); }
+function ccSetChk(id, v){ var e=$(id); if(e) e.checked = !!v; }
+function ccLogo(k){ var img=$("cc_"+k+"_img"); if(img) img.src = ccVal("cc_"+k+"_logo") || ""; }
+function ccFill(cfg){
+  var d=(cfg.services&&cfg.services.downloader)||{}, n=(cfg.services&&cfg.services.number)||{}, f=(cfg.services&&cfg.services.filehost)||{}, st=(cfg.services&&cfg.services.store)||{};
+  ccSetChk("cc_dl_enabled", d.enabled!==false); ccSet("cc_dl_name", d.name||"V4Z Downloader"); ccSet("cc_dl_logo", d.logo||""); ccSet("cc_dl_announce", d.announcement||""); ccSet("cc_dl_max", d.maxFormats||8); ccSet("cc_dl_timeout", d.socketTimeout||10); ccSet("cc_dl_retries", d.retries==null?1:d.retries); ccSetChk("cc_dl_social", !!d.showSocial);
+  ccSetChk("cc_nl_enabled", n.enabled!==false); ccSet("cc_nl_name", n.name||"Number Lookup"); ccSet("cc_nl_logo", n.logo||""); ccSet("cc_nl_announce", n.announcement||"");
+  ccSetChk("cc_fh_enabled", f.enabled!==false); ccSet("cc_fh_name", f.name||"V4Z File Host"); ccSet("cc_fh_logo", f.logo||""); ccSet("cc_fh_announce", f.announcement||"");
+  ccSetChk("cc_st_enabled", st.enabled!==false); ccSet("cc_st_title", st.title||"RASHD App Store"); ccSet("cc_st_heading", st.heading||"RASHD APP STORE"); ccSet("cc_st_logo", st.logo||""); ccSet("cc_st_announce", st.announcement||"");
+  ["dl","nl","fh","st"].forEach(ccLogo);
+}
+function ccCollect(){
+  return {updatedAt:new Date().toISOString(), services:{
+    downloader:{enabled:ccChk("cc_dl_enabled"), name:ccVal("cc_dl_name")||"V4Z Downloader", logo:ccVal("cc_dl_logo"), announcement:ccVal("cc_dl_announce"), maxFormats:Math.max(1,Math.min(12,ccNum("cc_dl_max",8))), socketTimeout:Math.max(5,Math.min(30,ccNum("cc_dl_timeout",10))), retries:Math.max(0,Math.min(3,ccNum("cc_dl_retries",1))), showSocial:ccChk("cc_dl_social")},
+    number:{enabled:ccChk("cc_nl_enabled"), name:ccVal("cc_nl_name")||"Number Lookup", logo:ccVal("cc_nl_logo"), announcement:ccVal("cc_nl_announce")},
+    filehost:{enabled:ccChk("cc_fh_enabled"), name:ccVal("cc_fh_name")||"V4Z File Host", logo:ccVal("cc_fh_logo"), announcement:ccVal("cc_fh_announce")},
+    store:{enabled:ccChk("cc_st_enabled"), title:ccVal("cc_st_title")||"RASHD App Store", heading:ccVal("cc_st_heading")||"RASHD APP STORE", logo:ccVal("cc_st_logo"), announcement:ccVal("cc_st_announce")}
+  }, broadcast:(ccCfg&&ccCfg.broadcast)||{}};
+}
+function ccLoad(force){
+  if(ccLoaded && !force) return; ccLoaded = true;
+  var st=$("ccStat"); if(st) st.textContent = "⏳ কন্ট্রোল ডেটা লোড হচ্ছে...";
+  Promise.all([ccGet("mini-control.json"), ccGet("number-lookup-config.json"), ccGet("filehost-config.json"), ccGet("config.json")]).then(function(r){
+    var cfg = r[0] || ccDef(); cfg.services = cfg.services || {};
+    var d = cfg.services.downloader || {}, n = cfg.services.number || {}, f = cfg.services.filehost || {}, sc = cfg.services.store || {};
+    if(r[1]){ n.enabled = r[1].enabled !== false; ccNlApiKey = r[1].apiKey || ccNlApiKey || ""; if(r[1].name) n.name = r[1].name; if(r[1].logo) n.logo = r[1].logo; if(r[1].announcement) n.announcement = r[1].announcement; }
+    if(r[2]){ f.enabled = r[2].enabled !== false; if(r[2].name) f.name = r[2].name; if(r[2].logo) f.logo = r[2].logo; if(r[2].announcement) f.announcement = r[2].announcement; }
+    if(r[3]){ ccStoreCfg = r[3] || {}; sc.title = sc.title || ccStoreCfg.title || "RASHD App Store"; sc.heading = sc.heading || ccStoreCfg.heading || "RASHD APP STORE"; sc.logo = sc.logo || ccStoreCfg.logo || ""; sc.announcement = sc.announcement || ccStoreCfg.announce || ""; }
+    cfg.services.downloader = d; cfg.services.number = n; cfg.services.filehost = f; cfg.services.store = sc;
+    ccCfg = cfg; ccFill(cfg);
+    if(st) st.textContent = "✅ কন্ট্রোল ডেটা তৈরি";
+    ccLoadStats(false);
+  }).catch(function(e){ if(st) st.textContent = "❌ কন্ট্রোল লোড ব্যর্থ: " + e; });
+}
+function ccSave(){
+  var cfg = ccCollect(); ccCfg = cfg;
+  var nl = {enabled:ccChk("cc_nl_enabled"), apiKey:ccNlApiKey || "", name:ccVal("cc_nl_name"), logo:ccVal("cc_nl_logo"), announcement:ccVal("cc_nl_announce"), updatedAt:cfg.updatedAt};
+  var fh = {enabled:ccChk("cc_fh_enabled"), name:ccVal("cc_fh_name"), logo:ccVal("cc_fh_logo"), announcement:ccVal("cc_fh_announce"), updatedAt:cfg.updatedAt};
+  var storeCfg = {}; for(var k in ccStoreCfg) storeCfg[k] = ccStoreCfg[k];
+  storeCfg.title = ccVal("cc_st_title"); storeCfg.heading = ccVal("cc_st_heading"); storeCfg.logo = ccVal("cc_st_logo"); storeCfg.announce = ccVal("cc_st_announce"); storeCfg.enabled = ccChk("cc_st_enabled"); storeCfg.updatedAt = cfg.updatedAt;
+  status("⏳ Control Center সেটিং সেভ হচ্ছে...", true);
+  ccPut("mini-control.json", cfg, "Admin: update central control")
+    .then(function(){ return ccPut("number-lookup-config.json", nl, "Admin: update Number Lookup from Control Center"); })
+    .then(function(){ return ccPut("filehost-config.json", fh, "Admin: update File Host from Control Center"); })
+    .then(function(){ return ccPut("config.json", storeCfg, "Admin: update App Store from Control Center"); })
+    .then(function(){ var st=$("ccStat"); if(st) st.textContent = "✅ সব সেটিং সেভ হয়েছে — " + new Date().toLocaleString(); status("✅ Control Center সেটিং সেভ হয়েছে!", true); })
+    .catch(function(e){ status("❌ সেভ ব্যর্থ: " + e, false); });
+}
+function ccLoadStats(force){
+  var box = $("ccStats"); if(!box) return;
+  var ghDl = 0; try{ (A.assets||[]).forEach(function(a){ ghDl += Number(a.downloads||0); }); }catch(e){}
+  var head = "📦 App Store GitHub ডাউনলোড: <b>" + ghDl + "</b>";
+  var db = null; try{ db = fbInit(); }catch(e){}
+  if(!db || !ADM){ box.innerHTML = head + "<br>🔐 Firebase ইউজার/কি হিসাব দেখতে আগে 👥 ইউজার ট্যাবে এডমিন লগইন করে এখানে রিফ্রেশ দাও।"; return; }
+  box.innerHTML = "⏳ হিসাব আসছে...";
+  db.ref("meta/userCount").once("value").then(function(s){ return s.val(); }, function(){ return null; }).then(function(uc){
+    return db.ref("keys").once("value").then(function(snap){ return {uc:uc, all:snap.val()||{}}; });
+  }).then(function(r){
+    var total=0, used=0, byFor={};
+    Object.keys(r.all||{}).forEach(function(code){ var k=r.all[code]||{}; total++; if(k.used===true){ used++; var f=k.usedFor||"অন্যান্য"; byFor[f]=(byFor[f]||0)+1; } });
+    var parts = [head, "👥 Store ওয়েব ইউজার: <b>" + (r.uc==null ? "—" : r.uc) + "</b>", "🔑 মোট কি: <b>" + total + "</b> · ব্যবহৃত: <b>" + used + "</b> · বাকি: <b>" + (total-used) + "</b>"];
+    var uses = Object.keys(byFor).map(function(k){ return k + ": " + byFor[k]; }).join(" · ");
+    if(uses) parts.push("📌 কি ব্যবহার: " + uses);
+    box.innerHTML = parts.join("<br>");
+  }).catch(function(){ box.innerHTML = head + "<br>⚠ Firebase হিসাব আনা যায়নি — 👥 ইউজার ট্যাবে লগইন অবস্থা চেক করো।"; });
+}
+function ccBroadcast(){
+  var targetEl = $("cc_bc_target"), target = targetEl ? targetEl.value : "all";
+  var text = ccVal("cc_bc_text");
+  if(!text){ status("❌ আগে ব্রডকাস্ট মেসেজ লেখো", false); return; }
+  var req = {id:"bc_" + Date.now().toString(36), target:target, text:text, createdAt:new Date().toISOString(), status:"queued"};
+  status("⏳ ব্রডকাস্ট রিকোয়েস্ট তৈরি হচ্ছে...", true);
+  ccPut("broadcast-outbox.json", req, "Admin: queue broadcast").then(function(){
+    var st=$("ccBcStat"); if(st) st.textContent = "✅ ব্রডকাস্ট রিকোয়েস্ট তৈরি হয়েছে (ID: " + req.id + ")। বট-সংযোগ আপডেট হলে সংশ্লিষ্ট বট তার ইউজার তালিকা ধরে পাঠাবে।";
+    status("✅ ব্রডকাস্ট রিকোয়েস্ট তৈরি হয়েছে", true);
+  }).catch(function(e){ status("❌ ব্রডকাস্ট রিকোয়েস্ট ব্যর্থ: " + e, false); });
+}
+</script>
+
 </body>
 </html>

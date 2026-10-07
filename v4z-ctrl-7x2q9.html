@@ -394,6 +394,57 @@ The kit loads Monetag and shows the ad only if the panel config enables it for t
 সমস্যা হলে কমেন্টে জানাও 💬
 সব আপডেট পেতে: @rashdteem</textarea>
           <div class="cc-actions"><button class="btn small" onclick="ccCopyText('ccUserKeyGuide')">📋 গাইড কপি করো</button></div>
+          <label>🌐 মাস্টার প্রম্পট (যেকোনো অ্যাপ/ওয়েবসাইটের জন্য)</label>
+          <textarea id="ccMasterPrompt" rows="14" readonly>You are building a project inside the "V4Z RASHD" ecosystem. Follow this master spec EXACTLY. Return complete files (no placeholders), say exactly where each file goes, and end with a short "owner must do" list.
+
+## The ecosystem (context you must respect)
+- I run Telegram bots, Telegram Mini Apps, websites and Android apps for my channel @rashdteem.
+- Everything is controlled from one admin panel through a central config file:
+  https://v4zrashd.github.io/rashd-app--store/mini-control.json
+  Each service has an entry in "apps[]" with: id, name, bot, url, enabled, logo, announcement, gate {membership, key}, ads {enabled, zone}.
+- One central key bot: @rashd12bot. Users get FREE keys there (watch an ad or referral). The SAME key works in every service: 1 unused key = 1 use (one app download, one lookup, one upload...). Keys are stored server-side in Firebase /keys and are burned only after a successful use (usedFor = the app id).
+- Ads are Monetag, controlled per-app from the panel config (ads.enabled + ads.zone).
+
+## Universal rules (apply to EVERY build — app, website, or Mini App)
+1. Design: dark background (#050807), neon accent #00ff9d, secondary #00e5ff, phone-first layout. UI text in Bengali. Add a small "BY V4Z RASHD" credit.
+2. NEVER hardcode service settings (name, logo, announcement, on/off). Read them from the central config (apps[] entry whose id = &lt;APP_ID&gt;). If the entry is missing or the config fails to load, the page/app must still open without crashing. If "enabled" is false, show a friendly "service is closed" message and stop.
+3. NEVER put any bot token or secret in client code. Anything secret is verified on a server only.
+4. Key rule everywhere: verify the key is unused BEFORE the action; burn it ONLY AFTER the action fully succeeds; if the action fails, do not burn. 1 key = 1 successful use, for admin too.
+5. Do not invent your own gate/key/ad systems. Use the mechanisms below for the project type.
+
+## If it is a Telegram Mini App
+Add AFTER telegram-web-app.js, before &lt;/body&gt;:
+&lt;script src="https://v4zrashd.github.io/rashd-app--store/v4z-kit.js" data-app="&lt;APP_ID&gt;"&gt;&lt;/script&gt;
+- Branding slots (kit fills them): &lt;img data-v4z="logo"&gt;, &lt;span data-v4z="name"&gt;&lt;/span&gt;, &lt;div data-v4z="announcement"&gt;&lt;/div&gt;
+- Keep the main button disabled until: V4ZKit.gate().then(g =&gt; { if (g.ok) unlock(); });
+  The kit shows its own join/key/closed screens. If g.ok is false, do nothing — never build your own gate UI, never call the Telegram Bot API or Firebase from the page. Outside Telegram the gate fails closed — do not work around it.
+- If gate.key is on: gate() returns {ok:true, keyChecked:true, key:"..."}. Call V4ZKit.burnKey(g.key) only after my app's action succeeded (file-host style: V4ZKit.burnKey(g.key, fileUrl)).
+- Ads: call V4ZKit.showAd().then(...) where an ad belongs (e.g. before the result). Never hardcode an ad SDK.
+- API: V4ZKit.ready(fn), V4ZKit.checkKey(key), V4ZKit.burnKey(key, fileUrl?), V4ZKit.showAd(). Failure reasons: not_member, key_invalid, key_used, key_off, disabled, auth, network, setup, unknown_app.
+
+## If it is a regular website (browser, not Telegram)
+- Load the same central config for name/logo/announcement/on-off and respect "enabled".
+- There is no Telegram identity in a browser: do NOT run any membership gate and do NOT block the page.
+- If I say the site needs keys: show a key input; verify and burn through the checker endpoint I give you (ask me if none was provided) — same rule: verify first, burn only after success. Never verify keys by reading Firebase directly from the page.
+- Ads only if I ask for them, and keep them non-blocking.
+
+## If it is an Android / native app
+- Fetch the same central config at startup for name/announcement/on-off; cache it and keep working offline with the last known config.
+- For keys: send the user to @rashd12bot (deep link) to get a free key, accept the key in the app, and verify/burn it only through a server endpoint (ask me which one if not provided). No tokens inside the APK.
+- Follow the same design and Bengali UI rules.
+
+## Project details for THIS build
+- APP_ID: &lt;APP_ID&gt;   APP_NAME: &lt;APP_NAME&gt;   BOT (if any): @&lt;BOT_USERNAME&gt;
+- What it does: &lt;DESCRIBE THE APP/WEBSITE IN 1-3 LINES&gt;
+- Main user action: &lt;THE ONE THING USERS COME TO DO&gt;
+- Key-gate needed: &lt;YES/NO&gt;  •  Burn the key when: &lt;THE SUCCESSFUL ACTION&gt;
+- Ad needed: &lt;YES/NO&gt;  •  Where: &lt;BEFORE RESULT / ON BUTTON / NO&gt;
+
+## Remind me at the end (owner steps)
+1. Add this app in the admin panel (Control Center -&gt; Mini App Kit) with the same APP_ID.
+2. For a new bot: set Vercel env KIT_TOKEN_&lt;APP_ID&gt; once, and set the Web App URL in BotFather.
+3. Anything else only I can do (tokens, panel saves, publishing).</textarea>
+          <div class="cc-actions"><button class="btn small" onclick="ccCopyText('ccMasterPrompt')">📋 মাস্টার প্রম্পট কপি করো</button></div>
         </section>
 
         <section class="cc-card cc-wide">

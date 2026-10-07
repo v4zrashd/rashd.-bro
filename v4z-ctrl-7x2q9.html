@@ -305,6 +305,74 @@ input:focus,textarea:focus{outline:none;border-color:var(--green)}
           <div class="cc-note">যোগ করেই উপরের “💾 সব সেটিং সেভ” চাপতে হবে — তাহলেই GitHub config-এ যাবে। কার্ড মুছলে শুধু এই তালিকা থেকে যায়; অ্যাপের পেজ বা বট মুছে না।</div>
         </section>
 
+
+        <section class="cc-card cc-wide">
+          <h3>🤖 AI প্রম্পট ও ফর্ম</h3>
+          <div class="cc-note">নতুন মিনি অ্যাপ বানানোর সময় এই দুটো ব্যবহার করো: খালি ফর্মটা ভরে আগের সাথে প্রম্পটটা অন্য AI-কে (কোডসহ) দিলেই kit-এর সব ফিচার যোগ হয়ে যাবে। যেকোনো সময় এখান থেকে কপি করে নিতে পারবে।</div>
+          <label>🤖 AI প্রম্পট</label>
+          <textarea id="ccAiPrompt" rows="14" readonly>You are integrating my Telegram Mini App with the "V4Z Mini App Kit". Follow this spec EXACTLY and return the complete updated file(s), plus a short list of what you changed.
+
+## What the kit is
+A shared client script that gives every Mini App: admin-panel-driven config (name, logo, announcement banner, on/off switch), a @rashdteem channel join-gate, an App Store key-gate (1 unused key = 1 use), and Monetag ads — all controlled from my admin panel config, so I never hardcode these again.
+
+## Step 1 — add the kit (one line, before &lt;/body&gt;, AFTER telegram-web-app.js)
+&lt;script src="https://telegram.org/js/telegram-web-app.js"&gt;&lt;/script&gt;
+&lt;script src="https://v4zrashd.github.io/rashd-app--store/v4z-kit.js" data-app="&lt;APP_ID&gt;"&gt;&lt;/script&gt;
+Optional attributes only if I tell you: data-check="&lt;checker API URL&gt;" (default /api/kitcheck), data-config="&lt;config URL&gt;".
+
+## Step 2 — branding slots (do NOT hardcode name/logo/announcement)
+Use these slots and the kit fills them from the panel config:
+&lt;img data-v4z="logo"&gt;  &lt;span data-v4z="name"&gt;&lt;/span&gt;  &lt;div data-v4z="announcement"&gt;&lt;/div&gt;
+
+## Step 3 — gate the main feature (REQUIRED, do not skip or reimplement)
+- Keep the app's main action button DISABLED until the gate passes.
+- Run the gate on load or on the main button click:
+  V4ZKit.gate().then(function(g){ if(g.ok){ /* unlock the app */ } });
+  The kit shows its own lock screens (join channel / enter key / service closed) and re-checks by itself. If g.ok is false, do nothing — never build your own gate UI, never call Telegram Bot API or Firebase directly, and never embed any token in the page.
+- Outside Telegram the gate fails closed on purpose. Do not work around it.
+
+## Step 4 — key rule (only if the panel entry has gate.key = true)
+- gate() already verifies the key (returns { ok:true, keyChecked:true, key:"..." }).
+- Call V4ZKit.burnKey(g.key) ONLY AFTER my app's main action has fully succeeded (file uploaded / result delivered). Never burn before or on mere check — 1 key must equal 1 successful use. If the action fails, do not burn.
+- For file-host style apps pass the final file URL: V4ZKit.burnKey(g.key, fileUrl).
+
+## Step 5 — ads (do not hardcode any ad SDK)
+Where I say an ad should appear (or before delivering the main result), call:
+  V4ZKit.showAd().then(function(){ /* continue */ });
+The kit loads Monetag and shows the ad only if the panel config enables it for this app. Always continue after the promise resolves.
+
+## API reference
+- V4ZKit.ready(fn) / window event 'v4zkit-ready' — kit.entry holds this app's config; kit.state is 'ready' | 'disabled' | 'unknown-app' | 'no-config'. If state is 'disabled', the kit already shows a closed screen — just stop.
+- V4ZKit.checkKey(key) -&gt; Promise&lt;{ok, reason}&gt; (no burn)
+- V4ZKit.burnKey(key, fileUrl?) -&gt; Promise&lt;{ok, reason}&gt;
+- Reasons: not_member, key_invalid, key_used, key_off, disabled, auth, network, setup, unknown_app. Show a short friendly message for failures of MY app's own actions; gate failures are already explained by the kit's screens.
+
+## Rules
+- Keep my existing design exactly (dark neon style, accent #00ff9d) and keep all UI text in Bengali as in my code.
+- Do not remove or rewrite working features; only add the kit wiring.
+- If my code has several files, tell me exactly which files changed and where the one-line include went.
+- If &lt;APP_ID&gt; was not replaced or the kit file fails to load, the page must still open without crashing.</textarea>
+          <div class="cc-actions"><button class="btn small" onclick="ccCopyText('ccAiPrompt')">📋 প্রম্পট কপি করো</button></div>
+          <label>📝 মিনি অ্যাপ ফর্ম (খালি)</label>
+          <textarea id="ccAiForm" rows="12" readonly>নতুন মিনি অ্যাপ ফর্ম
+--------------------
+১. অ্যাপের নাম:
+২. App ID (ছোট হাতের ইংরেজি, যেমন myapp):
+৩. কোন বটে চলবে (@ ছাড়া username):
+৪. অ্যাপটা কী করবে (এক লাইনে):
+৫. মূল কাজ/বাটন (ইউজার যেটা করতে আসবে):
+৬. Join-gate লাগবে? (@rashdteem) — হ্যাঁ / না:
+৭. Key-gate লাগবে? (১ কী = ১ ব্যবহার) — হ্যাঁ / না:
+৮. কোন কাজ সফল হলে কী পুড়বে:
+৯. অ্যাড দেখাবে? — হ্যাঁ / না:
+১০. অ্যাড কোথায় দেখাবে (কাজের আগে / রেজাল্টের আগে):
+১১. Monetag zone নম্বর (থাকলে):
+১২. ঘোষণা/ব্যানার টেক্সট (থাকলে):
+১৩. লোগো URL (থাকলে):
+১৪. অতিরিক্ত নোট:</textarea>
+          <div class="cc-actions"><button class="btn small" onclick="ccCopyText('ccAiForm')">📋 ফর্ম কপি করো</button></div>
+        </section>
+
         <section class="cc-card cc-wide">
           <h3>📊 হিসাব</h3>
           <div id="ccStats" class="cc-stats">⏳ হিসাব লোড হচ্ছে...</div>
@@ -1365,6 +1433,13 @@ function ccKitAdd(){
   ccKitApps.push({id:id, name:name||id, bot:bot||"", url:"", enabled:true, logo:"", announcement:"", gate:{membership:true, key:false}, ads:{enabled:false, zone:""}});
   ccKitRender();
   status("✅ '"+id+"' যোগ হয়েছে — এখন উপরে “💾 সব সেটিং সেভ” চাপো। মনে রেখো: Vercel-এ একবার KIT_TOKEN_" + id.toUpperCase().replace(/[^A-Z0-9]/g,"_") + " env বসাতে হবে।", true);
+}
+function ccCopyText(id){
+  var el=$(id); if(!el) return;
+  var done=function(){ status("✅ কপি হয়েছে — এখন অন্য AI-কে পেস্ট করো", true); };
+  var fallback=function(){ el.focus(); el.select(); try{ document.execCommand("copy"); done(); }catch(e){ status("❌ কপি হয়নি — টেক্সট সিলেক্ট করে নিজে কপি করো", false); } };
+  if(navigator.clipboard && navigator.clipboard.writeText){ navigator.clipboard.writeText(el.value).then(done, fallback); }
+  else fallback();
 }
 function ccKitRemove(i){
   ccKitSyncFromDom();

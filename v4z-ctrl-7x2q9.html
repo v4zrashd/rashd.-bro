@@ -293,6 +293,19 @@ input:focus,textarea:focus{outline:none;border-color:var(--green)}
         </div>
 
         <section class="cc-card cc-wide">
+          <h3>🧩 Mini App Kit — নতুন অ্যাপ</h3>
+          <div class="cc-note">নতুন Mini App বানালে এখানে শুধু নামটা যোগ করলেই তার কার্ড চলে আসবে — প্যানেলের কোড বদলাতে হবে না। অ্যাপের পেজে v4z-kit.js এক লাইনে যোগ করলেই join-gate, key-gate আর অ্যাড এই সেটিং অনুযায়ী চলবে। প্রতি নতুন বটের জন্য একবার Vercel-এ env বসাতে হয়: <b>KIT_TOKEN_&lt;APP_ID&gt;</b> (যেমন app id “number” হলে KIT_TOKEN_NUMBER)। উপরের চারটা পুরোনো সার্ভিসের মূল on/off সেটিং আগের কার্ডেই থাকবে; এই তালিকা তাদের gate/অ্যাড সেটিং আর সব নতুন অ্যাপের জন্য।</div>
+          <div id="ccKitGrid" class="cc-grid"></div>
+          <div class="cc-actions" style="margin-top:12px">
+            <input type="text" id="ck_new_id" placeholder="নতুন app id (ছোট হাতের, যেমন myapp)" style="flex:1;min-width:140px">
+            <input type="text" id="ck_new_name" placeholder="অ্যাপের নাম" style="flex:1;min-width:140px">
+            <input type="text" id="ck_new_bot" placeholder="বট username (যেমন mybot)" style="flex:1;min-width:140px">
+            <button class="btn small" onclick="ccKitAdd()">➕ অ্যাপ যোগ করো</button>
+          </div>
+          <div class="cc-note">যোগ করেই উপরের “💾 সব সেটিং সেভ” চাপতে হবে — তাহলেই GitHub config-এ যাবে। কার্ড মুছলে শুধু এই তালিকা থেকে যায়; অ্যাপের পেজ বা বট মুছে না।</div>
+        </section>
+
+        <section class="cc-card cc-wide">
           <h3>📊 হিসাব</h3>
           <div id="ccStats" class="cc-stats">⏳ হিসাব লোড হচ্ছে...</div>
           <div class="cc-actions"><button class="btn small" onclick="ccLoadStats(true)">🔄 হিসাব রিফ্রেশ</button></div>
@@ -1196,7 +1209,7 @@ function ccDef(){
     number:{enabled:true,name:"Number Lookup",logo:"",announcement:""},
     filehost:{enabled:true,name:"V4Z File Host",logo:"",announcement:""},
     store:{enabled:true,title:"RASHD App Store",heading:"RASHD APP STORE",logo:"",announcement:""}
-  }, broadcast:{}};
+  }, apps:ccKitSeedApps(), broadcast:{}};
 }
 function ccDecode(f){ try{ return JSON.parse(decodeURIComponent(escape(atob(String((f&&f.content)||"").replace(/\s/g,""))))); }catch(e){ return null; } }
 function ccGet(path){ return ghGet(path).then(ccDecode).catch(function(){ return null; }); }
@@ -1220,6 +1233,8 @@ function ccFill(cfg){
   ccSetChk("cc_fh_enabled", f.enabled!==false); ccSet("cc_fh_name", f.name||"V4Z File Host"); ccSet("cc_fh_logo", f.logo||""); ccSet("cc_fh_announce", f.announcement||"");
   ccSetChk("cc_st_enabled", st.enabled!==false); ccSet("cc_st_title", st.title||"RASHD App Store"); ccSet("cc_st_heading", st.heading||"RASHD APP STORE"); ccSet("cc_st_logo", st.logo||""); ccSet("cc_st_announce", st.announcement||"");
   ["dl","nl","fh","st"].forEach(ccLogo);
+  ccKitApps = (cfg.apps && cfg.apps.length) ? cfg.apps : ccKitSeedApps();
+  ccKitRender();
 }
 function ccCollect(){
   return {updatedAt:new Date().toISOString(), services:{
@@ -1227,7 +1242,7 @@ function ccCollect(){
     number:{enabled:ccChk("cc_nl_enabled"), name:ccVal("cc_nl_name")||"Number Lookup", logo:ccVal("cc_nl_logo"), announcement:ccVal("cc_nl_announce")},
     filehost:{enabled:ccChk("cc_fh_enabled"), name:ccVal("cc_fh_name")||"V4Z File Host", logo:ccVal("cc_fh_logo"), announcement:ccVal("cc_fh_announce")},
     store:{enabled:ccChk("cc_st_enabled"), title:ccVal("cc_st_title")||"RASHD App Store", heading:ccVal("cc_st_heading")||"RASHD APP STORE", logo:ccVal("cc_st_logo"), announcement:ccVal("cc_st_announce")}
-  }, broadcast:(ccCfg&&ccCfg.broadcast)||{}};
+  }, apps:(ccKitApps.length ? ccKitCollect() : ((ccCfg&&ccCfg.apps)||ccKitSeedApps())), broadcast:(ccCfg&&ccCfg.broadcast)||{}};
 }
 function ccLoad(force){
   if(ccLoaded && !force) return; ccLoaded = true;
@@ -1286,6 +1301,77 @@ function ccBroadcast(){
     var st=$("ccBcStat"); if(st) st.textContent = "✅ ব্রডকাস্ট রিকোয়েস্ট তৈরি হয়েছে (ID: " + req.id + ")। বট-সংযোগ আপডেট হলে সংশ্লিষ্ট বট তার ইউজার তালিকা ধরে পাঠাবে।";
     status("✅ ব্রডকাস্ট রিকোয়েস্ট তৈরি হয়েছে", true);
   }).catch(function(e){ status("❌ ব্রডকাস্ট রিকোয়েস্ট ব্যর্থ: " + e, false); });
+}
+
+/* ---------- Mini App Kit registry ---------- */
+var ccKitApps = [];
+function ccKitSeedApps(){
+  return [
+    {id:"downloader", name:"V4Z Downloader", bot:"rashxdbot", url:"https://rashd-bro.vercel.app/dl.html", enabled:true, logo:"", announcement:"", gate:{membership:true, key:false}, ads:{enabled:false, zone:""}},
+    {id:"number", name:"Number Lookup", bot:"rashd1_bot", url:"https://rashd-bro.vercel.app/", enabled:true, logo:"", announcement:"", gate:{membership:true, key:true}, ads:{enabled:false, zone:""}},
+    {id:"filehost", name:"V4Z File Host", bot:"rashd_hosting_bot", url:"https://rashd-bro.vercel.app/host.html", enabled:true, logo:"", announcement:"", gate:{membership:true, key:true}, ads:{enabled:false, zone:""}},
+    {id:"store", name:"RASHD App Store", bot:"rashd12bot", url:"https://v4zrashd.github.io/rashd-app--store/", enabled:true, logo:"", announcement:"", gate:{membership:false, key:false}, ads:{enabled:true, zone:"11949593"}}
+  ];
+}
+function ccKitEsc(s){ return String(s==null?"":s).replace(/&/g,"&amp;").replace(/"/g,"&quot;").replace(/</g,"&lt;"); }
+function ccKitRender(){
+  var grid = $("ccKitGrid"); if(!grid) return;
+  var h = "";
+  ccKitApps.forEach(function(a, i){
+    var g = a.gate||{}, ad = a.ads||{};
+    h += '<section class="cc-card" data-kid="'+ccKitEsc(a.id)+'">'
+      + '<div class="cc-top"><img id="ck'+i+'_img" class="cc-logo" alt="" src="'+ccKitEsc(a.logo||"")+'"><div><div class="cc-title">🧩 '+ccKitEsc(a.name||a.id)+'</div><div class="cc-sub">app id: <b>'+ccKitEsc(a.id)+'</b> · env: KIT_TOKEN_'+ccKitEsc(String(a.id||"").toUpperCase().replace(/[^A-Z0-9]/g,"_"))+'</div></div></div>'
+      + '<label class="cc-check"><input type="checkbox" id="ck'+i+'_enabled" '+(a.enabled!==false?"checked":"")+'> সার্ভিস চালু</label>'
+      + '<label>নাম</label><input type="text" id="ck'+i+'_name" value="'+ccKitEsc(a.name||"")+'">'
+      + '<label>বট username (@ ছাড়া)</label><input type="text" id="ck'+i+'_bot" value="'+ccKitEsc(a.bot||"")+'">'
+      + '<label>Mini App URL</label><input type="text" id="ck'+i+'_url" value="'+ccKitEsc(a.url||"")+'" placeholder="https://...">'
+      + '<label>লোগো URL</label><input type="text" id="ck'+i+'_logo" value="'+ccKitEsc(a.logo||"")+'" oninput="ccKitLogo('+i+')" placeholder="https://.../logo.png">'
+      + '<label>ঘোষণা ব্যানার</label><textarea id="ck'+i+'_announce" rows="2" placeholder="ইউজারদের দেখানোর ঘোষণা">'+ccKitEsc(a.announcement||"")+'</textarea>'
+      + '<label class="cc-check"><input type="checkbox" id="ck'+i+'_membership" '+(g.membership!==false?"checked":"")+'> @rashdteem join-gate</label>'
+      + '<label class="cc-check"><input type="checkbox" id="ck'+i+'_keygate" '+(g.key===true?"checked":"")+'> App Store key-gate (১ কী = ১ ব্যবহার)</label>'
+      + '<label class="cc-check"><input type="checkbox" id="ck'+i+'_ads" '+(ad.enabled===true?"checked":"")+'> Monetag অ্যাড চালু</label>'
+      + '<label>অ্যাড zone (শুধু নম্বর)</label><input type="text" id="ck'+i+'_adzone" value="'+ccKitEsc(ad.zone||"")+'" placeholder="11949593">'
+      + '<div class="cc-actions"><button class="btn small" onclick="ccKitRemove('+i+')">🗑 তালিকা থেকে সরাও</button></div>'
+      + '</section>';
+  });
+  grid.innerHTML = h || '<div class="cc-note">এখনো কোনো kit অ্যাপ নেই — নিচের ফর্ম থেকে যোগ করো।</div>';
+}
+function ccKitLogo(i){ var img=$("ck"+i+"_img"); if(img) img.src = ccVal("ck"+i+"_logo") || ""; }
+function ccKitCollect(){
+  var out = [];
+  ccKitApps.forEach(function(a, i){
+    if(!$("ck"+i+"_name")){ out.push(a); return; }
+    out.push({
+      id: a.id,
+      name: ccVal("ck"+i+"_name") || a.name || a.id,
+      bot: ccVal("ck"+i+"_bot"),
+      url: ccVal("ck"+i+"_url"),
+      enabled: ccChk("ck"+i+"_enabled"),
+      logo: ccVal("ck"+i+"_logo"),
+      announcement: ccVal("ck"+i+"_announce"),
+      gate: { membership: ccChk("ck"+i+"_membership"), key: ccChk("ck"+i+"_keygate") },
+      ads: { enabled: ccChk("ck"+i+"_ads"), zone: (ccVal("ck"+i+"_adzone")||"").replace(/[^0-9]/g,"") }
+    });
+  });
+  return out;
+}
+function ccKitSyncFromDom(){ if($("ck0_name") || ccKitApps.length===0) ccKitApps = ccKitCollect(); }
+function ccKitAdd(){
+  var id = (ccVal("ck_new_id")||"").toLowerCase();
+  var name = ccVal("ck_new_name"), bot = ccVal("ck_new_bot");
+  if(!/^[a-z0-9][a-z0-9_-]*$/.test(id)){ status("❌ app id ঠিক নেই — ছোট হাতের অক্ষর/সংখ্যা দিয়ে শুরু করো (যেমন myapp)", false); return; }
+  ccKitSyncFromDom();
+  for(var i=0;i<ccKitApps.length;i++){ if(ccKitApps[i].id===id){ status("❌ এই id আগেই আছে", false); return; } }
+  ccKitApps.push({id:id, name:name||id, bot:bot||"", url:"", enabled:true, logo:"", announcement:"", gate:{membership:true, key:false}, ads:{enabled:false, zone:""}});
+  ccKitRender();
+  status("✅ '"+id+"' যোগ হয়েছে — এখন উপরে “💾 সব সেটিং সেভ” চাপো। মনে রেখো: Vercel-এ একবার KIT_TOKEN_" + id.toUpperCase().replace(/[^A-Z0-9]/g,"_") + " env বসাতে হবে।", true);
+}
+function ccKitRemove(i){
+  ccKitSyncFromDom();
+  var a = ccKitApps[i]; if(!a) return;
+  ccKitApps.splice(i,1);
+  ccKitRender();
+  status("🗑 '"+a.id+"' তালিকা থেকে সরানো হয়েছে — সেভ না করা পর্যন্ত GitHub-এ আগেরটাই থাকবে।", true);
 }
 </script>
 
